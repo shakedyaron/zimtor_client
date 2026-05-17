@@ -1,21 +1,48 @@
-import { Button } from "@/components/ui/button"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+import LandingPage from "@/pages/LandingPage"
+import AuthPage from "@/pages/AuthPage"
+import CreateBusinessPage from "@/pages/CreateBusinessPage"
+import DashboardPage from "@/pages/DashboardPage"
+import BookingPage from "@/pages/BookingPage"
 
-export function App() {
-  return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
-    </div>
-  )
+    )
+  }
+  if (!user) return <Navigate to="/auth" replace />
+  return <>{children}</>
 }
 
-export default App
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route
+          path="/create-business"
+          element={
+            <ProtectedRoute>
+              <CreateBusinessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/:businessSlug" element={<BookingPage />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
