@@ -25,7 +25,7 @@ function toSlug(text: string) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "-")
-    .replace(/[^\wא-ת-]/g, "")
+    .replace(/[^a-z0-9-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
 }
@@ -62,9 +62,24 @@ export default function CreateBusinessPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    const trimmedName = name.trim()
     const trimmedSlug = slug.trim()
+    const trimmedPhone = phone.trim()
+
+    if (!trimmedName) {
+      setError("יש להזין שם עסק.")
+      return
+    }
     if (!trimmedSlug) {
-      setError("מזהה עסק לא תקין")
+      setError("יש להזין קישור לעסק.")
+      return
+    }
+    if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
+      setError("הקישור יכול להכיל רק אותיות באנגלית קטנות, מספרים ומקפים.")
+      return
+    }
+    if (!trimmedPhone) {
+      setError("יש להזין מספר טלפון.")
       return
     }
     if (RESERVED_SLUGS.has(trimmedSlug)) {
@@ -75,9 +90,9 @@ export default function CreateBusinessPage() {
 
     const { error } = await supabase.from("businesses").insert({
       owner_id: user!.id,
-      name: name.trim(),
-      slug: slug.trim(),
-      phone: phone.trim() || null,
+      name: trimmedName,
+      slug: trimmedSlug,
+      phone: trimmedPhone,
     })
 
     if (error) {
@@ -164,7 +179,7 @@ export default function CreateBusinessPage() {
               "0 0 40px rgba(59,130,246,0.10), 0 24px 48px rgba(0,0,0,0.35)",
           }}
         >
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-400">
                 שם העסק
@@ -173,7 +188,6 @@ export default function CreateBusinessPage() {
                 placeholder="למשל: ספרות דוד"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
-                required
               />
             </div>
 
@@ -192,15 +206,13 @@ export default function CreateBusinessPage() {
                 placeholder="my-business"
                 value={slug}
                 onChange={(e) => setSlug(toSlug(e.target.value))}
-                required
                 dir="ltr"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-400">
-                טלפון{" "}
-                <span className="font-normal text-slate-600">(אופציונלי)</span>
+                טלפון
               </Label>
               <Input
                 type="tel"

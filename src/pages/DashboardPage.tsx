@@ -106,14 +106,35 @@ export default function DashboardPage() {
   async function handleAddService(e: React.FormEvent) {
     e.preventDefault()
     if (!business) return
-    setAddingService(true)
     setAddServiceError(null)
+    const trimmedName = newServiceName.trim()
+    const duration = Number(newServiceDuration)
+    const price = newServicePrice.trim() ? Number(newServicePrice) : null
+
+    if (!trimmedName) {
+      setAddServiceError("יש להזין שם שירות.")
+      return
+    }
+    if (!newServiceDuration.trim()) {
+      setAddServiceError("יש להזין משך שירות.")
+      return
+    }
+    if (!Number.isFinite(duration) || duration <= 0) {
+      setAddServiceError("משך השירות חייב להיות מספר חיובי.")
+      return
+    }
+    if (price !== null && (!Number.isFinite(price) || price <= 0)) {
+      setAddServiceError("מחיר השירות חייב להיות מספר חיובי.")
+      return
+    }
+
+    setAddingService(true)
 
     const { error } = await supabase.from("services").insert({
       business_id: business.id,
-      name: newServiceName.trim(),
-      duration_minutes: parseInt(newServiceDuration),
-      price: newServicePrice ? parseInt(newServicePrice) : null,
+      name: trimmedName,
+      duration_minutes: duration,
+      price,
     })
 
     if (error) {
@@ -327,6 +348,7 @@ export default function DashboardPage() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   onSubmit={handleAddService}
+                  noValidate
                   className="space-y-3 px-4 py-4 sm:px-5"
                   style={{
                     borderBottom: "1px solid rgba(125,211,252,0.1)",
@@ -340,7 +362,6 @@ export default function DashboardPage() {
                         placeholder="תספורת גברים"
                         value={newServiceName}
                         onChange={(e) => setNewServiceName(e.target.value)}
-                        required
                         className="h-8 text-sm"
                       />
                     </div>
@@ -352,7 +373,6 @@ export default function DashboardPage() {
                         value={newServiceDuration}
                         onChange={(e) => setNewServiceDuration(e.target.value)}
                         min={5}
-                        required
                         dir="ltr"
                         className="h-8 text-sm"
                       />

@@ -107,15 +107,50 @@ export default function BookingPage() {
   }, [business, selectedService, selectedDate])
 
   async function handleBooking() {
-    if (!business || !selectedService || !selectedDate || !selectedTime) return
-    setSubmitting(true)
     setSubmitError(null)
+    const trimmedName = customerName.trim()
+    const trimmedPhone = customerPhone.trim()
+    const phoneDigits = trimmedPhone.replace(/\D/g, "")
+
+    if (!business) {
+      setSubmitError("שגיאה בטעינת העסק. נסה לרענן את הדף.")
+      return
+    }
+    if (!selectedService) {
+      setSubmitError("יש לבחור שירות לפני קביעת התור.")
+      setStep(1)
+      return
+    }
+    if (!selectedDate) {
+      setSubmitError("יש לבחור תאריך לפני קביעת התור.")
+      setStep(2)
+      return
+    }
+    if (!selectedTime) {
+      setSubmitError("יש לבחור שעה לפני קביעת התור.")
+      setStep(2)
+      return
+    }
+    if (!trimmedName) {
+      setSubmitError("יש להזין שם מלא.")
+      return
+    }
+    if (!trimmedPhone) {
+      setSubmitError("יש להזין מספר טלפון.")
+      return
+    }
+    if (phoneDigits.length < 9) {
+      setSubmitError("מספר הטלפון חייב להכיל לפחות 9 ספרות.")
+      return
+    }
+
+    setSubmitting(true)
 
     const { error } = await supabase.from("appointments").insert({
       business_id: business.id,
       service_id: selectedService.id,
-      customer_name: customerName.trim(),
-      customer_phone: customerPhone.trim(),
+      customer_name: trimmedName,
+      customer_phone: trimmedPhone,
       appointment_date: selectedDate,
       appointment_time: selectedTime + ":00",
       status: "pending",
@@ -128,6 +163,24 @@ export default function BookingPage() {
       setStep(4)
     }
     setSubmitting(false)
+  }
+
+  function handleContinueToDetails() {
+    setSubmitError(null)
+    if (!selectedService) {
+      setSubmitError("יש לבחור שירות לפני שממשיכים.")
+      setStep(1)
+      return
+    }
+    if (!selectedDate) {
+      setSubmitError("יש לבחור תאריך לפני שממשיכים.")
+      return
+    }
+    if (!selectedTime) {
+      setSubmitError("יש לבחור שעה לפני שממשיכים.")
+      return
+    }
+    setStep(3)
   }
 
   if (loading) {
@@ -264,6 +317,7 @@ export default function BookingPage() {
                       onClick={() => {
                         setSelectedService(s)
                         setSelectedTime(null)
+                        setSubmitError(null)
                         setStep(2)
                       }}
                       className="w-full rounded-2xl border border-white/8 bg-white/5 p-4 text-end transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/10 sm:border-cyan-200/12 sm:bg-[rgba(9,14,32,0.86)] sm:hover:border-cyan-300/35 sm:hover:bg-[rgba(12,20,42,0.96)]"
@@ -344,6 +398,7 @@ export default function BookingPage() {
                     onChange={(e) => {
                       setSelectedDate(e.target.value)
                       setSelectedTime(null)
+                      setSubmitError(null)
                     }}
                     dir="ltr"
                   />
@@ -367,7 +422,10 @@ export default function BookingPage() {
                         {availableSlots.map((slot) => (
                           <button
                             key={slot}
-                            onClick={() => setSelectedTime(slot)}
+                            onClick={() => {
+                              setSelectedTime(slot)
+                              setSubmitError(null)
+                            }}
                             className={`rounded-xl border py-2.5 text-sm font-semibold transition-all duration-150 ${
                               selectedTime === slot
                                 ? "border-cyan-200/40 bg-linear-to-r from-blue-500 to-cyan-500 text-white shadow-lg ring-1 shadow-blue-500/30 ring-cyan-300/40 sm:shadow-[0_0_28px_rgba(34,211,238,0.2)]"
@@ -382,10 +440,15 @@ export default function BookingPage() {
                   </div>
                 )}
 
+                {submitError && (
+                  <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {submitError}
+                  </p>
+                )}
+
                 <button
-                  disabled={!selectedTime}
-                  onClick={() => setStep(3)}
-                  className="w-full rounded-2xl bg-linear-to-r from-blue-500 to-cyan-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 disabled:opacity-40"
+                  onClick={handleContinueToDetails}
+                  className="w-full rounded-2xl bg-linear-to-r from-blue-500 to-cyan-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90"
                 >
                   המשך
                 </button>
@@ -449,8 +512,10 @@ export default function BookingPage() {
                       id="cname"
                       placeholder="ישראל ישראלי"
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setCustomerName(e.target.value)
+                        setSubmitError(null)
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -460,8 +525,10 @@ export default function BookingPage() {
                       type="tel"
                       placeholder="050-0000000"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value)
+                        setSubmitError(null)
+                      }}
                       dir="ltr"
                     />
                   </div>
@@ -474,9 +541,7 @@ export default function BookingPage() {
                 )}
 
                 <button
-                  disabled={
-                    !customerName.trim() || !customerPhone.trim() || submitting
-                  }
+                  disabled={submitting}
                   onClick={handleBooking}
                   className="w-full rounded-2xl bg-linear-to-r from-blue-500 to-cyan-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 disabled:opacity-40"
                 >
