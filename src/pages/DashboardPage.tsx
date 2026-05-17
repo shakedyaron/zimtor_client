@@ -85,7 +85,11 @@ export default function DashboardPage() {
     setBusiness(biz)
 
     const [{ data: svcs }, { data: apts }] = await Promise.all([
-      supabase.from("services").select("*").eq("business_id", biz.id).order("created_at"),
+      supabase
+        .from("services")
+        .select("*")
+        .eq("business_id", biz.id)
+        .order("created_at"),
       supabase
         .from("appointments")
         .select("*, services(name, duration_minutes)")
@@ -187,6 +191,7 @@ export default function DashboardPage() {
   )
 
   const bookingUrl = `/${business?.slug}`
+  const bookingDisplayUrl = `${new URL(window.location.origin).host}/${business?.slug ?? ""}`
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -194,23 +199,27 @@ export default function DashboardPage() {
       <header
         className="sticky top-0 z-10 border-b"
         style={{
-          background: "rgba(5,8,22,0.85)",
-          borderColor: "rgba(255,255,255,0.08)",
+          background: "rgba(5,8,22,0.94)",
+          borderColor: "rgba(125,211,252,0.12)",
           backdropFilter: "blur(20px)",
         }}
       >
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="font-heading text-xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">zimtor</span>
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <span className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-xl font-bold text-transparent">
+              zimtor
+            </span>
             <span className="text-white/20">·</span>
-            <span className="text-sm font-medium text-slate-300">{business?.name}</span>
+            <span className="truncate text-sm font-semibold text-slate-100">
+              {business?.name}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <a
               href={bookingUrl}
               target="_blank"
               rel="noreferrer"
-              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:flex"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-blue-500/10 hover:text-white sm:flex"
             >
               דף ההזמנות
               <ExternalLink className="h-3 w-3" />
@@ -219,7 +228,7 @@ export default function DashboardPage() {
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              className="gap-1.5 text-slate-300 hover:text-white"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">יציאה</span>
@@ -228,39 +237,52 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-5 sm:px-5 sm:py-6 lg:py-7">
         {/* Stats row */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3"
+          className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 sm:gap-4"
         >
           <div
-            className="rounded-xl p-4"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
+            style={{
+              background: "rgba(9,14,32,0.86)",
+              border: "1px solid rgba(125,211,252,0.14)",
+            }}
           >
-            <p className="mb-1 text-xs text-slate-400">תורים קרובים</p>
-            <p className="font-heading text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            <p className="mb-1 text-xs font-medium text-slate-300">
+              תורים קרובים
+            </p>
+            <p className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
               {upcomingAppointments.length}
             </p>
           </div>
           <div
-            className="rounded-xl p-4"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
+            style={{
+              background: "rgba(9,14,32,0.86)",
+              border: "1px solid rgba(125,211,252,0.14)",
+            }}
           >
-            <p className="mb-1 text-xs text-slate-400">שירותים פעילים</p>
-            <p className="font-heading text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            <p className="mb-1 text-xs font-medium text-slate-300">
+              שירותים פעילים
+            </p>
+            <p className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
               {services.length}
             </p>
           </div>
           {business?.phone && (
             <div
-              className="hidden flex-col justify-center rounded-xl p-4 sm:flex"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="hidden flex-col justify-center rounded-2xl p-5 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:flex"
+              style={{
+                background: "rgba(9,14,32,0.86)",
+                border: "1px solid rgba(125,211,252,0.14)",
+              }}
             >
-              <p className="mb-1 text-xs text-slate-400">טלפון</p>
-              <p className="text-sm font-medium text-slate-200" dir="ltr">
+              <p className="mb-1 text-xs font-medium text-slate-300">טלפון</p>
+              <p className="text-sm font-semibold text-slate-100" dir="ltr">
                 {business.phone}
               </p>
             </div>
@@ -268,7 +290,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Main grid */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           {/* Services */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -276,21 +298,24 @@ export default function DashboardPage() {
             transition={{ duration: 0.35, delay: 0.07 }}
           >
             <div
-              className="overflow-hidden rounded-xl"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+              style={{
+                background: "rgba(7,12,29,0.9)",
+                border: "1px solid rgba(125,211,252,0.12)",
+              }}
             >
               <div
-                className="flex items-center justify-between px-5 py-4"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4"
+                style={{ borderBottom: "1px solid rgba(125,211,252,0.1)" }}
               >
-                <h2 className="font-heading text-base font-semibold text-white">
+                <h2 className="font-heading text-base font-bold text-slate-50">
                   שירותים
                 </h2>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAddService(!showAddService)}
-                  className="gap-1.5 text-xs text-slate-400 hover:text-blue-400"
+                  className="shrink-0 gap-1.5 text-xs font-medium text-slate-300 hover:text-blue-300"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   הוסף שירות
@@ -302,11 +327,14 @@ export default function DashboardPage() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   onSubmit={handleAddService}
-                  className="space-y-3 px-5 py-4"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}
+                  className="space-y-3 px-4 py-4 sm:px-5"
+                  style={{
+                    borderBottom: "1px solid rgba(125,211,252,0.1)",
+                    background: "rgba(15,23,42,0.45)",
+                  }}
                 >
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-3 space-y-1">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="col-span-2 space-y-1 sm:col-span-3">
                       <Label className="text-xs">שם שירות</Label>
                       <Input
                         placeholder="תספורת גברים"
@@ -353,7 +381,10 @@ export default function DashboardPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() => { setShowAddService(false); setAddServiceError(null) }}
+                      onClick={() => {
+                        setShowAddService(false)
+                        setAddServiceError(null)
+                      }}
                     >
                       ביטול
                     </Button>
@@ -368,30 +399,37 @@ export default function DashboardPage() {
                 </motion.form>
               )}
 
-              <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+              <div
+                className="divide-y"
+                style={{ borderColor: "rgba(125,211,252,0.1)" }}
+              >
                 {services.length === 0 ? (
-                  <p className="px-5 py-8 text-center text-sm text-slate-500">
+                  <p className="px-5 py-8 text-center text-sm text-slate-400">
                     עדיין אין שירותים. הוסף שירות ראשון.
                   </p>
                 ) : (
                   services.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between px-5 py-3 transition-colors hover:bg-white/3"
+                      className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-white/3 sm:px-5"
                     >
-                      <div>
-                        <p className="text-sm font-medium text-slate-200">{s.name}</p>
-                        <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-50">
+                          {s.name}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-400">
                           <Clock className="h-3 w-3" />
                           <span>{s.duration_minutes} דקות</span>
                           {s.price != null && (
-                            <span className="font-medium text-blue-400">₪{s.price}</span>
+                            <span className="font-semibold text-cyan-300">
+                              ₪{s.price}
+                            </span>
                           )}
                         </div>
                       </div>
                       <button
                         onClick={() => handleDeleteService(s.id)}
-                        className="rounded p-1.5 text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="shrink-0 rounded-lg p-2 text-slate-400 transition-colors hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -409,14 +447,17 @@ export default function DashboardPage() {
             transition={{ duration: 0.35, delay: 0.12 }}
           >
             <div
-              className="overflow-hidden rounded-xl"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+              style={{
+                background: "rgba(7,12,29,0.9)",
+                border: "1px solid rgba(125,211,252,0.12)",
+              }}
             >
               <div
-                className="flex items-center justify-between px-5 py-4"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex items-center justify-between px-4 py-3.5 sm:px-5 sm:py-4"
+                style={{ borderBottom: "1px solid rgba(125,211,252,0.1)" }}
               >
-                <h2 className="font-heading text-base font-semibold text-white">
+                <h2 className="font-heading text-base font-bold text-slate-50">
                   תורים קרובים
                 </h2>
                 <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400">
@@ -424,36 +465,39 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+              <div
+                className="divide-y"
+                style={{ borderColor: "rgba(125,211,252,0.1)" }}
+              >
                 {upcomingAppointments.length === 0 ? (
-                  <p className="px-5 py-8 text-center text-sm text-slate-500">
+                  <p className="px-5 py-8 text-center text-sm text-slate-400">
                     אין תורים קרובים.
                   </p>
                 ) : (
                   upcomingAppointments.map((apt) => (
                     <div
                       key={apt.id}
-                      className="px-5 py-3 transition-colors hover:bg-white/3"
+                      className="px-4 py-3.5 transition-colors hover:bg-white/3 sm:px-5"
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
-                          <div className="mb-1 flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-slate-200">
+                          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-slate-100">
                               {apt.customer_name}
                             </span>
                             <Badge
                               variant={statusVariant[apt.status] ?? "default"}
-                              className="h-4 py-0 text-[10px]"
+                              className="h-5 py-0 text-[10px]"
                             >
                               {statusLabel[apt.status] ?? apt.status}
                             </Badge>
                           </div>
-                          <div className="space-y-0.5 text-xs text-slate-500">
-                            <p>
+                          <div className="space-y-1 text-xs leading-5 text-slate-400">
+                            <p className="font-semibold text-slate-300">
                               {formatDate(apt.appointment_date)} ·{" "}
                               {formatTime(apt.appointment_time)}
                             </p>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
                               <Phone className="h-2.5 w-2.5" />
                               <span dir="ltr">{apt.customer_phone}</span>
                             </div>
@@ -462,7 +506,7 @@ export default function DashboardPage() {
                                 services?: { name: string }
                               }
                             ).services?.name && (
-                              <p>
+                              <p className="font-medium text-slate-300">
                                 {
                                   (
                                     apt as Appointment & {
@@ -477,9 +521,9 @@ export default function DashboardPage() {
                         {apt.status === "pending" && (
                           <button
                             onClick={() => handleCancelAppointment(apt.id)}
-                            className="shrink-0 rounded px-2 py-1 text-[10px] font-medium text-destructive/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            className="self-end rounded-lg border border-red-400/15 bg-red-500/8 px-2.5 py-1.5 text-[10px] font-semibold text-red-300 transition-colors hover:bg-destructive/10 hover:text-destructive sm:self-start"
                           >
-                            ביטול
+                            בטל תור
                           </button>
                         )}
                       </div>
@@ -496,18 +540,27 @@ export default function DashboardPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35, delay: 0.2 }}
-          className="mt-6 rounded-xl px-5 py-4"
-        style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}
+          className="mt-4 rounded-2xl px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:px-5"
+          style={{
+            background: "rgba(7,12,29,0.9)",
+            border: "1px solid rgba(59,130,246,0.28)",
+          }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="mb-1 text-xs text-slate-400">קישור לדף ההזמנות שלך</p>
-              <p dir="ltr" className="font-mono text-sm text-blue-400">
-                zimtor.app/{business?.slug}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="mb-1 text-xs font-medium text-slate-300">
+                קישור לדף ההזמנות שלך
+              </p>
+              <p
+                dir="ltr"
+                title={`${window.location.origin}/${business?.slug ?? ""}`}
+                className="max-w-[220px] truncate font-mono text-sm font-semibold text-cyan-300 sm:max-w-sm"
+              >
+                {bookingDisplayUrl}
               </p>
             </div>
             <a href={bookingUrl} target="_blank" rel="noreferrer">
-              <button className="flex items-center gap-1.5 rounded-lg bg-linear-to-r from-blue-500 to-cyan-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90">
+              <button className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 sm:w-auto">
                 פתח
                 <ExternalLink className="h-3 w-3" />
               </button>

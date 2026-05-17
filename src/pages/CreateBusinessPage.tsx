@@ -7,8 +7,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 const RESERVED_SLUGS = new Set([
-  "auth", "dashboard", "create-business", "admin", "api", "login",
-  "register", "signup", "sign-up", "signin", "sign-in",
+  "auth",
+  "dashboard",
+  "create-business",
+  "admin",
+  "api",
+  "login",
+  "register",
+  "signup",
+  "sign-up",
+  "signin",
+  "sign-in",
 ])
 
 function toSlug(text: string) {
@@ -30,6 +39,7 @@ export default function CreateBusinessPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [checkingBusiness, setCheckingBusiness] = useState(true)
+  const bookingDisplayOrigin = new URL(window.location.origin).host
 
   useEffect(() => {
     if (!user) return
@@ -94,7 +104,7 @@ export default function CreateBusinessPage() {
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
-          className="absolute -right-48 -top-48 h-96 w-96 rounded-full"
+          className="absolute -top-48 -right-48 h-96 w-96 rounded-full"
           style={{
             filter: "blur(120px)",
             opacity: 0.13,
@@ -132,11 +142,11 @@ export default function CreateBusinessPage() {
         transition={{ duration: 0.4 }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="mb-8 text-center">
-          <span className="font-heading bg-linear-to-r from-white to-slate-300 bg-clip-text text-3xl font-extrabold text-transparent">
-              zimtor
-            </span>
-          <h1 className="font-heading mt-3 text-2xl font-bold text-white">
+        <div className="mb-8 text-right">
+          <span className="bg-linear-to-r from-white to-slate-300 bg-clip-text font-heading text-3xl font-extrabold text-transparent">
+            zimtor
+          </span>
+          <h1 className="mt-3 font-heading text-2xl font-bold text-white">
             צור את העסק שלך
           </h1>
           <p className="mt-1.5 text-sm text-slate-500">
@@ -150,12 +160,15 @@ export default function CreateBusinessPage() {
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.10)",
             backdropFilter: "blur(24px)",
-            boxShadow: "0 0 40px rgba(59,130,246,0.10), 0 24px 48px rgba(0,0,0,0.35)",
+            boxShadow:
+              "0 0 40px rgba(59,130,246,0.10), 0 24px 48px rgba(0,0,0,0.35)",
           }}
         >
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-400">שם העסק</Label>
+              <Label className="text-xs font-medium text-slate-400">
+                שם העסק
+              </Label>
               <Input
                 placeholder="למשל: ספרות דוד"
                 value={name}
@@ -168,7 +181,7 @@ export default function CreateBusinessPage() {
               <Label className="text-xs font-medium text-slate-400">
                 קישור לעסק{" "}
                 <span className="font-normal text-slate-600">
-                  (zimtor.app/
+                  ({bookingDisplayOrigin}/
                   <span dir="ltr" className="inline">
                     {slug || "your-business"}
                   </span>

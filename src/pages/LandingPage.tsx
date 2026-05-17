@@ -1,39 +1,85 @@
 import { useRef } from "react"
 import { Link } from "react-router-dom"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { Bell, TrendingUp, Link2, Scissors, Calendar, Clock, Smartphone } from "lucide-react"
+import { Link2, Scissors, Calendar, Clock, Smartphone } from "lucide-react"
 
-const fakeApts = [
-  { initials: "ד", name: "דני כהן", service: "תספורת גברים", time: "14:00", status: "confirmed", color: "#3b82f6" },
-  { initials: "מ", name: "מיכל לוי", service: "גילוח זקן", time: "15:30", status: "pending", color: "#8b5cf6" },
-  { initials: "א", name: "אורי פרץ", service: "תספורת + גילוח", time: "16:00", status: "pending", color: "#06b6d4" },
-  { initials: "ש", name: "שרה מזרחי", service: "תספורת נשים", time: "17:00", status: "confirmed", color: "#10b981" },
+const previewAppointments = [
+  {
+    name: "\u05d3\u05e0\u05d9 \u05db\u05d4\u05df",
+    service:
+      "\u05ea\u05e1\u05e4\u05d5\u05e8\u05ea \u05d2\u05d1\u05e8\u05d9\u05dd",
+    phone: "050-123-4567",
+    date: "\u05d4\u05d9\u05d5\u05dd",
+    time: "14:00",
+    color: "#3b82f6",
+  },
+  {
+    name: "\u05de\u05d9\u05db\u05dc \u05dc\u05d5\u05d9",
+    service: "\u05d2\u05d9\u05dc\u05d5\u05d7 \u05d6\u05e7\u05df",
+    phone: "052-765-4321",
+    date: "\u05de\u05d7\u05e8",
+    time: "15:30",
+    color: "#8b5cf6",
+  },
+  {
+    name: "\u05d0\u05d5\u05e8\u05d9 \u05e4\u05e8\u05e5",
+    service: "\u05ea\u05e1\u05e4\u05d5\u05e8\u05ea + \u05d6\u05e7\u05df",
+    phone: "054-111-2233",
+    date: "\u05de\u05d7\u05e8",
+    time: "16:00",
+    color: "#06b6d4",
+  },
 ]
 
-const weekBars = [35, 58, 42, 75, 55, 88, 70]
-const weekDays = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"]
-
-const glass = "rounded-2xl border border-white/10 bg-white/7 backdrop-blur-xl"
+const previewServices = [
+  {
+    name: "\u05ea\u05e1\u05e4\u05d5\u05e8\u05ea \u05d2\u05d1\u05e8\u05d9\u05dd",
+    duration: "30 \u05d3\u05e7\u05d5\u05ea",
+    price: "\u20aa80",
+  },
+  {
+    name: "\u05d2\u05d9\u05dc\u05d5\u05d7 \u05d6\u05e7\u05df",
+    duration: "20 \u05d3\u05e7\u05d5\u05ea",
+    price: "\u20aa50",
+  },
+  {
+    name: "\u05ea\u05e1\u05e4\u05d5\u05e8\u05ea + \u05d6\u05e7\u05df",
+    duration: "45 \u05d3\u05e7\u05d5\u05ea",
+    price: "\u20aa120",
+  },
+]
+const glass =
+  "rounded-2xl border border-white/10 bg-white/7 backdrop-blur-md sm:backdrop-blur-xl"
 
 function FloatCard1() {
   return (
     <div className={`${glass} p-4 shadow-2xl shadow-black/30`}>
       <div className="mb-2.5 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/15 ring-1 ring-green-500/25">
-          <Bell className="h-3.5 w-3.5 text-green-400" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/15 ring-1 ring-blue-500/25">
+          <Calendar className="h-3.5 w-3.5 text-blue-300" />
         </div>
         <div>
-          <p className="text-xs font-semibold text-white">תור חדש!</p>
-          <p className="text-[10px] text-slate-500">לפני דקה</p>
+          <p className="text-xs font-semibold text-white">
+            {"\u05ea\u05d5\u05e8 \u05e7\u05e8\u05d5\u05d1"}
+          </p>
+          <p className="text-[10px] text-slate-500">
+            {"\u05d4\u05d9\u05d5\u05dd \u05d1\u05e9\u05e2\u05d4 14:00"}
+          </p>
         </div>
       </div>
       <div
         className="flex items-center gap-2 rounded-xl p-2"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.06)",
+        }}
       >
         <div
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-          style={{ background: "rgba(59,130,246,0.25)", border: "1px solid rgba(59,130,246,0.4)" }}
+          style={{
+            background: "rgba(59,130,246,0.25)",
+            border: "1px solid rgba(59,130,246,0.4)",
+          }}
         >
           ד
         </div>
@@ -41,10 +87,6 @@ function FloatCard1() {
           <p className="text-xs font-medium text-white">דני כהן</p>
           <p className="text-[10px] text-slate-400">14:00 · תספורת גברים</p>
         </div>
-      </div>
-      <div className="mt-2 flex items-center gap-1.5">
-        <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
-        <span className="text-[10px] text-green-400">ממתין לאישור</span>
       </div>
     </div>
   )
@@ -55,25 +97,27 @@ function FloatCard2() {
     <div className={`${glass} p-4 shadow-2xl shadow-black/30`}>
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <TrendingUp className="h-3.5 w-3.5 text-blue-400" />
-          <p className="text-xs text-slate-400">תורים השבוע</p>
+          <Calendar className="h-3.5 w-3.5 text-blue-400" />
+          <p className="text-xs text-slate-400">
+            {
+              "\u05ea\u05d5\u05e8\u05d9\u05dd \u05e7\u05e8\u05d5\u05d1\u05d9\u05dd"
+            }
+          </p>
         </div>
-        <span className="text-[10px] font-semibold text-green-400">↑ 12%</span>
+        <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
+          3
+        </span>
       </div>
-      <p className="mb-2.5 text-2xl font-bold text-white">24</p>
-      <div className="flex h-8 items-end gap-0.5">
-        {[4, 6, 5, 8, 6, 9, 7].map((h, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-sm"
-            style={{
-              height: `${h * 3}px`,
-              background:
-                i === 5 ? "linear-gradient(to top, #3b82f6, #06b6d4)" : "rgba(59,130,246,0.22)",
-              minHeight: "3px",
-            }}
-          />
-        ))}
+      <p className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent">
+        3
+      </p>
+      <div className="mt-2 rounded-xl border border-cyan-300/10 bg-slate-950/35 px-3 py-2">
+        <p className="text-[10px] font-medium text-slate-300">
+          {"\u05d3\u05e0\u05d9 \u05db\u05d4\u05df"}
+        </p>
+        <p className="text-[10px] text-slate-500" dir="ltr">
+          14:00 · 050-123-4567
+        </p>
       </div>
     </div>
   )
@@ -88,10 +132,13 @@ function FloatCard3() {
       </div>
       <div
         className="mb-2.5 rounded-xl px-3 py-2"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}
       >
         <p className="font-mono text-xs font-medium text-blue-300" dir="ltr">
-          zimtor.app/my-salon
+          zimtor.co/my-salon
         </p>
       </div>
       <div className="flex items-center justify-between">
@@ -101,7 +148,9 @@ function FloatCard3() {
         >
           העתק קישור
         </button>
-        <span className="text-[10px] text-slate-500">47 ביקורים</span>
+        <span className="text-[10px] text-slate-500">
+          {"\u05d3\u05e3 \u05e4\u05e2\u05d9\u05dc"}
+        </span>
       </div>
     </div>
   )
@@ -123,10 +172,16 @@ function FloatCard4() {
           <div
             key={name}
             className="flex items-center justify-between rounded-lg px-2 py-1.5"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
           >
             <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+              <div
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: color }}
+              />
               <span className="text-xs text-slate-200">{name}</span>
             </div>
             <span className="text-xs font-bold" style={{ color }}>
@@ -147,7 +202,8 @@ function DashboardMockup() {
         border: "1px solid rgba(255,255,255,0.10)",
         background: "rgba(8,17,31,0.92)",
         backdropFilter: "blur(24px)",
-        boxShadow: "0 0 80px rgba(59,130,246,0.16), 0 40px 80px rgba(0,0,0,0.45)",
+        boxShadow:
+          "0 0 80px rgba(59,130,246,0.16), 0 40px 80px rgba(0,0,0,0.45)",
       }}
     >
       {/* Browser chrome */}
@@ -169,8 +225,11 @@ function DashboardMockup() {
           style={{ background: "rgba(255,255,255,0.06)" }}
         >
           <div className="h-1.5 w-1.5 rounded-full bg-green-400/80" />
-          <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-            zimtor.app/dashboard
+          <span
+            className="font-mono text-xs"
+            style={{ color: "rgba(255,255,255,0.35)" }}
+          >
+            zimtor.co/dashboard
           </span>
         </div>
       </div>
@@ -185,7 +244,10 @@ function DashboardMockup() {
           </div>
           <div
             className="rounded-lg px-2.5 py-1 text-[10px] font-semibold text-green-400"
-            style={{ background: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.18)" }}
+            style={{
+              background: "rgba(34,197,94,0.10)",
+              border: "1px solid rgba(34,197,94,0.18)",
+            }}
           >
             ● פעיל
           </div>
@@ -194,9 +256,24 @@ function DashboardMockup() {
         {/* Stats */}
         <div className="mb-3 grid grid-cols-3 gap-2">
           {[
-            { val: "24", label: "תורים", sub: "+3 היום", color: "blue" },
-            { val: "₪3.2K", label: "הכנסה", sub: "החודש", color: "cyan" },
-            { val: "8", label: "שירותים", sub: "פעילים", color: "slate" },
+            {
+              val: "3",
+              label: "\u05ea\u05d5\u05e8\u05d9\u05dd",
+              sub: "\u05e7\u05e8\u05d5\u05d1\u05d9\u05dd",
+              color: "blue",
+            },
+            {
+              val: "3",
+              label: "\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd",
+              sub: "\u05e4\u05e2\u05d9\u05dc\u05d9\u05dd",
+              color: "cyan",
+            },
+            {
+              val: "1",
+              label: "\u05e7\u05d9\u05e9\u05d5\u05e8",
+              sub: "\u05dc\u05d4\u05d6\u05de\u05e0\u05d5\u05ea",
+              color: "slate",
+            },
           ].map(({ val, label, sub, color }) => (
             <div
               key={label}
@@ -233,57 +310,98 @@ function DashboardMockup() {
           ))}
         </div>
 
-        {/* Mini chart */}
+        {/* Services panel */}
         <div
-          className="mb-3 rounded-xl p-3"
+          className="mb-3 overflow-hidden rounded-xl"
           style={{
-            background: "rgba(255,255,255,0.025)",
-            border: "1px solid rgba(255,255,255,0.05)",
+            background: "rgba(7,12,29,0.90)",
+            border: "1px solid rgba(125,211,252,0.12)",
           }}
         >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-medium text-slate-400">ביצועים השבוע</span>
-            <span className="text-[10px] font-semibold text-green-400">↑ 12%</span>
+          <div
+            className="flex items-center justify-between px-3 py-2.5"
+            style={{ borderBottom: "1px solid rgba(125,211,252,0.10)" }}
+          >
+            <p className="font-heading text-[11px] font-bold text-slate-50">
+              {"\u05e9\u05d9\u05e8\u05d5\u05ea\u05d9\u05dd"}
+            </p>
+            <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-semibold text-blue-300">
+              3
+            </span>
           </div>
-          <div className="flex items-end gap-1">
-            {weekBars.map((h, i) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-0.5">
-                <div
-                  className="w-full rounded-sm"
-                  style={{
-                    height: `${Math.round((h / 100) * 28)}px`,
-                    background:
-                      i === 5
-                        ? "linear-gradient(to top, rgba(59,130,246,0.9), rgba(6,182,212,0.6))"
-                        : "rgba(59,130,246,0.22)",
-                    minHeight: "3px",
-                  }}
-                />
-                <span className="text-[8px] text-slate-600">{weekDays[i]}</span>
+          <div
+            className="divide-y"
+            style={{ borderColor: "rgba(125,211,252,0.10)" }}
+          >
+            {previewServices.map((service) => (
+              <div
+                key={service.name}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold text-slate-50">
+                    {service.name}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                    <Clock className="h-2.5 w-2.5" />
+                    <span>{service.duration}</span>
+                  </div>
+                </div>
+                <span className="shrink-0 text-[11px] font-semibold text-cyan-300">
+                  {service.price}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Booking link */}
+        <div
+          className="mb-3 rounded-xl px-3 py-2.5"
+          style={{
+            background: "rgba(7,12,29,0.90)",
+            border: "1px solid rgba(59,130,246,0.24)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="mb-0.5 text-[10px] font-medium text-slate-400">
+                {
+                  "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05d3\u05e3 \u05d4\u05d4\u05d6\u05de\u05e0\u05d5\u05ea"
+                }
+              </p>
+              <p
+                className="truncate font-mono text-[11px] font-semibold text-cyan-300"
+                dir="ltr"
+              >
+                zimtor.co/davidbarber
+              </p>
+            </div>
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-blue-300" />
+          </div>
+        </div>
+
         {/* Appointments header */}
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-            תורים היום
+          <p className="text-[10px] font-semibold tracking-widest text-slate-600 uppercase">
+            {
+              "\u05ea\u05d5\u05e8\u05d9\u05dd \u05e7\u05e8\u05d5\u05d1\u05d9\u05dd"
+            }
           </p>
           <span
             className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-blue-400"
             style={{ background: "rgba(59,130,246,0.12)" }}
           >
-            4 תורים
+            3
           </span>
         </div>
 
         {/* Appointment rows */}
         <div className="space-y-1.5">
-          {fakeApts.map((apt) => (
+          {previewAppointments.map((apt) => (
             <div
               key={apt.name}
-              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2"
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2.5"
               style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.04)",
@@ -296,31 +414,28 @@ function DashboardMockup() {
                   border: `1px solid ${apt.color}55`,
                 }}
               >
-                {apt.initials}
+                {apt.name.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-white">{apt.name}</p>
-                <p className="truncate text-[10px] text-slate-500">{apt.service}</p>
+                <p className="truncate text-xs font-semibold text-white">
+                  {apt.name}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500">
+                  <span className="font-medium text-slate-400">
+                    {apt.service}
+                  </span>
+                  <span dir="ltr">{apt.phone}</span>
+                </div>
               </div>
               <div className="flex flex-col items-end gap-0.5">
-                <span className="font-mono text-[11px] text-slate-300" dir="ltr">
+                <span
+                  className="font-mono text-[11px] text-slate-300"
+                  dir="ltr"
+                >
                   {apt.time}
                 </span>
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                  style={{
-                    background:
-                      apt.status === "confirmed"
-                        ? "rgba(34,197,94,0.15)"
-                        : "rgba(251,191,36,0.12)",
-                    color: apt.status === "confirmed" ? "#4ade80" : "#fbbf24",
-                    border:
-                      apt.status === "confirmed"
-                        ? "1px solid rgba(34,197,94,0.25)"
-                        : "1px solid rgba(251,191,36,0.2)",
-                  }}
-                >
-                  {apt.status === "confirmed" ? "מאושר" : "ממתין"}
+                <span className="text-[9px] font-medium text-slate-500">
+                  {apt.date}
                 </span>
               </div>
             </div>
@@ -342,7 +457,7 @@ const features = [
     icon: Clock,
     color: "cyan",
     title: "ניהול תורים בקליק",
-    desc: "רואים את כל התורים, מאשרים, מבטלים ומנהלים שירותים ממסך אחד פשוט.",
+    desc: "רואים תורים קרובים, פרטי לקוחות ושירותים פעילים ממסך אחד פשוט.",
   },
   {
     icon: Smartphone,
@@ -385,7 +500,7 @@ export default function LandingPage() {
         {/* Background layers */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <motion.div
-            className="absolute -right-60 -top-40 h-150 w-150 rounded-full"
+            className="absolute -top-40 -right-60 hidden h-150 w-150 rounded-full sm:block"
             style={{
               x: glow1X,
               filter: "blur(140px)",
@@ -394,7 +509,7 @@ export default function LandingPage() {
             }}
           />
           <motion.div
-            className="absolute -left-40 top-20 h-125 w-125 rounded-full"
+            className="absolute top-20 -left-40 hidden h-125 w-125 rounded-full sm:block"
             style={{
               x: glow2X,
               filter: "blur(120px)",
@@ -404,7 +519,7 @@ export default function LandingPage() {
           />
           {/* Third subtle glow */}
           <div
-            className="absolute bottom-0 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full"
+            className="absolute bottom-0 left-1/2 hidden h-96 w-96 -translate-x-1/2 rounded-full sm:block"
             style={{
               filter: "blur(100px)",
               opacity: 0.045,
@@ -416,7 +531,7 @@ export default function LandingPage() {
             className="absolute inset-0"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.011) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.011) 1px, transparent 1px)",
+                "linear-gradient(rgba(125,211,252,0.022) 1px, transparent 1px), linear-gradient(90deg, rgba(125,211,252,0.018) 1px, transparent 1px)",
               backgroundSize: "80px 80px",
             }}
           />
@@ -432,7 +547,7 @@ export default function LandingPage() {
 
         {/* Nav */}
         <nav className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <span className="font-heading bg-linear-to-r from-white to-slate-300 bg-clip-text text-2xl font-extrabold text-transparent">
+          <span className="bg-linear-to-r from-white to-slate-300 bg-clip-text font-heading text-2xl font-extrabold text-transparent">
             zimtor
           </span>
           <Link to="/auth">
@@ -443,7 +558,7 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero text */}
-        <div className="relative z-10 mx-auto max-w-4xl px-6 pb-20 pt-16 text-center">
+        <div className="relative z-10 mx-auto max-w-4xl px-6 pt-16 pb-20 text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -458,7 +573,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1 }}
-            className="font-heading mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl"
+            className="mb-6 font-heading text-5xl leading-tight font-black tracking-tight text-white sm:text-6xl lg:text-7xl"
           >
             הדרך החכמה
             <br />
@@ -475,8 +590,8 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.28 }}
             className="mx-auto mb-12 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg"
           >
-            Zimtor עוזרת לעסקים קטנים לקבל תורים אונליין, לנהל שירותים, ולראות את כל
-            ההזמנות במקום אחד.
+            Zimtor עוזרת לעסקים קטנים לקבל תורים אונליין, לנהל שירותים, ולראות
+            את כל ההזמנות במקום אחד.
           </motion.p>
 
           <motion.div
@@ -507,7 +622,12 @@ export default function LandingPage() {
               <motion.div style={{ x: f2X, y: f2Y }}>
                 <motion.div
                   animate={{ y: [0, -7, 0] }}
-                  transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  transition={{
+                    duration: 4.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.5,
+                  }}
                 >
                   <FloatCard2 />
                 </motion.div>
@@ -515,7 +635,12 @@ export default function LandingPage() {
               <motion.div style={{ x: f4X, y: f4Y }}>
                 <motion.div
                   animate={{ y: [0, -5, 0] }}
-                  transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 1.8 }}
+                  transition={{
+                    duration: 5.2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 1.8,
+                  }}
                 >
                   <FloatCard4 />
                 </motion.div>
@@ -538,7 +663,12 @@ export default function LandingPage() {
               <motion.div style={{ x: f1X, y: f1Y }}>
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0 }}
+                  transition={{
+                    duration: 3.8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0,
+                  }}
                 >
                   <FloatCard1 />
                 </motion.div>
@@ -546,7 +676,12 @@ export default function LandingPage() {
               <motion.div style={{ x: f3X, y: f3Y }}>
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 4.3, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+                  transition={{
+                    duration: 4.3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 1.2,
+                  }}
                 >
                   <FloatCard3 />
                 </motion.div>
@@ -560,7 +695,6 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              style={{ y: mockupY }}
             >
               <DashboardMockup />
             </motion.div>
@@ -586,7 +720,9 @@ export default function LandingPage() {
         {/* Bottom fade */}
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-48"
-          style={{ background: "linear-gradient(to bottom, transparent, #08111f)" }}
+          style={{
+            background: "linear-gradient(to bottom, transparent, #08111f)",
+          }}
         />
       </section>
 
@@ -600,7 +736,7 @@ export default function LandingPage() {
             transition={{ duration: 0.5 }}
             className="mb-16 text-center"
           >
-            <h2 className="font-heading mb-3 text-3xl font-extrabold text-white sm:text-4xl">
+            <h2 className="mb-3 font-heading text-3xl font-extrabold text-white sm:text-4xl">
               ניהול תורים מעולם לא היה קל יותר
             </h2>
             <p className="mx-auto max-w-md text-slate-400">
@@ -654,8 +790,12 @@ export default function LandingPage() {
                     }`}
                   />
                 </div>
-                <h3 className="font-heading mb-2 text-lg font-bold text-white">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-slate-400">{f.desc}</p>
+                <h3 className="mb-2 font-heading text-lg font-bold text-white">
+                  {f.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-400">
+                  {f.desc}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -677,11 +817,12 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
           className="mx-auto max-w-xl text-center"
         >
-          <h2 className="font-heading mb-3 text-3xl font-extrabold text-white sm:text-4xl">
+          <h2 className="mb-3 font-heading text-3xl font-extrabold text-white sm:text-4xl">
             מוכנים להתחיל?
           </h2>
           <p className="mb-8 text-slate-400">
-            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם, בלי כרטיס אשראי.
+            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם, בלי כרטיס
+            אשראי.
           </p>
           <Link to="/auth">
             <button className="rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 px-10 py-4 text-base font-bold text-white shadow-lg shadow-blue-500/25 transition hover:opacity-90 hover:shadow-blue-500/45">
@@ -693,14 +834,19 @@ export default function LandingPage() {
 
       {/* ── FOOTER ───────────────────────────────── */}
       <footer
-        style={{ background: "#050816", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        style={{
+          background: "#050816",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+        }}
         className="px-6 py-8 text-center"
       >
-        <span className="font-heading bg-linear-to-r from-white to-slate-400 bg-clip-text text-lg font-extrabold text-transparent">
+        <span className="bg-linear-to-r from-white to-slate-400 bg-clip-text font-heading text-lg font-extrabold text-transparent">
           zimtor
         </span>
         <span className="mx-3 text-white/10">·</span>
-        <span className="text-xs text-slate-600">© 2026 · ניהול תורים לעסקים</span>
+        <span className="text-xs text-slate-600">
+          © 2026 · ניהול תורים לעסקים
+        </span>
       </footer>
     </div>
   )
