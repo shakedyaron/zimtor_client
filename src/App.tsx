@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import LandingPage from "@/pages/LandingPage"
 import AuthPage from "@/pages/AuthPage"
+import AuthCallbackPage from "@/pages/AuthCallbackPage"
 import CreateBusinessPage from "@/pages/CreateBusinessPage"
 import DashboardPage from "@/pages/DashboardPage"
 import BookingPage from "@/pages/BookingPage"
@@ -25,6 +26,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route
           path="/create-business"
           element={

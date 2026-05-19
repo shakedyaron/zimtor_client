@@ -20,6 +20,8 @@ const RESERVED_SLUGS = new Set([
   "sign-in",
 ])
 
+// TODO: Add create-business UI for opening_time, closing_time, and working_days.
+
 function toSlug(text: string) {
   return text
     .toLowerCase()

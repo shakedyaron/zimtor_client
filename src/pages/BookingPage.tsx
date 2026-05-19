@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Clock, CheckCircle, Check } from "lucide-react"
+import {
+  Clock,
+  CheckCircle,
+  Check,
+  Phone,
+  Camera,
+  MessageCircle,
+  MapPin,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { Business, Service } from "@/types"
 import { Input } from "@/components/ui/input"
@@ -9,10 +17,27 @@ import { Label } from "@/components/ui/label"
 
 type Step = 1 | 2 | 3 | 4
 
-function generateTimeSlots(durationMinutes: number): string[] {
+const DEFAULT_OPENING_TIME = "09:00"
+const DEFAULT_CLOSING_TIME = "18:00"
+const DEFAULT_WORKING_DAYS = [0, 1, 2, 3, 4]
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  return hours * 60 + minutes
+}
+
+function generateTimeSlots(
+  durationMinutes: number,
+  openingTime = DEFAULT_OPENING_TIME,
+  closingTime = DEFAULT_CLOSING_TIME
+): string[] {
   const slots: string[] = []
-  const startMinutes = 9 * 60
-  const endMinutes = 18 * 60
+  const startMinutes =
+    timeToMinutes(openingTime) ?? timeToMinutes(DEFAULT_OPENING_TIME)!
+  const endMinutes =
+    timeToMinutes(closingTime) ?? timeToMinutes(DEFAULT_CLOSING_TIME)!
+  if (durationMinutes <= 0 || startMinutes >= endMinutes) return slots
   const interval = durationMinutes
   for (let m = startMinutes; m + durationMinutes <= endMinutes; m += interval) {
     const h = Math.floor(m / 60)
@@ -25,23 +50,244 @@ function generateTimeSlots(durationMinutes: number): string[] {
 }
 
 function todayDateString() {
-  return new Date().toISOString().split("T")[0]
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function dateStringToLocalDate(dateStr: string) {
+  const [year, month, day] = dateStr.split("-").map(Number)
+  return new Date(year, month - 1, day)
 }
 
 function formatDateHebrew(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("he-IL", {
+  return dateStringToLocalDate(dateStr).toLocaleDateString("he-IL", {
     weekday: "long",
     day: "numeric",
     month: "long",
   })
 }
 
+function getBusinessWorkingDays(business: Business | null) {
+  const workingDays = business?.working_days
+  if (Array.isArray(workingDays)) return workingDays
+  if (typeof workingDays === "string") {
+    try {
+      const parsed = JSON.parse(workingDays)
+      if (Array.isArray(parsed))
+        return parsed.filter((day) => typeof day === "number")
+    } catch {
+      return DEFAULT_WORKING_DAYS
+    }
+  }
+  return DEFAULT_WORKING_DAYS
+}
+
+function isBusinessOpenOnDate(business: Business | null, dateStr: string) {
+  const day = dateStringToLocalDate(dateStr).getDay()
+  return getBusinessWorkingDays(business).includes(day)
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + days)
+  return nextDate
+}
+
+function isSelectableBookingDate(business: Business | null, date: Date) {
+  const day = startOfLocalDay(date)
+  const today = startOfLocalDay(new Date())
+  const maxDate = addDays(today, 14)
+
+  return (
+    day.getTime() >= today.getTime() &&
+    day.getTime() <= maxDate.getTime() &&
+    getBusinessWorkingDays(business).includes(day.getDay())
+  )
+}
+
+function findNextSelectableBookingDate(business: Business | null) {
+  const today = startOfLocalDay(new Date())
+  for (let offset = 0; offset <= 14; offset += 1) {
+    const candidate = addDays(today, offset)
+    if (isSelectableBookingDate(business, candidate)) {
+      return toDateString(candidate)
+    }
+  }
+  return toDateString(today)
+}
+
 const stepLabels = ["שירות", "תאריך ושעה", "פרטים"]
+const weekdayLabels = ["א", "ב", "ג", "ד", "ה", "ו", "ש"]
 
 const slideVariants = {
   enter: { opacity: 0, x: -20 },
   center: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: 20 },
+}
+
+function sameDate(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function toDateString(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function CalendarDatePicker({
+  business,
+  selectedDate,
+  onSelect,
+}: {
+  business: Business | null
+  selectedDate: string
+  onSelect: (date: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    dateStringToLocalDate(selectedDate)
+  )
+
+  useEffect(() => {
+    setVisibleMonth(dateStringToLocalDate(selectedDate))
+  }, [selectedDate])
+
+  const selected = dateStringToLocalDate(selectedDate)
+  const monthStart = new Date(
+    visibleMonth.getFullYear(),
+    visibleMonth.getMonth(),
+    1
+  )
+  const monthTitle = monthStart.toLocaleDateString("he-IL", {
+    month: "long",
+    year: "numeric",
+  })
+  const leadingEmptyDays = monthStart.getDay()
+  const daysInMonth = new Date(
+    visibleMonth.getFullYear(),
+    visibleMonth.getMonth() + 1,
+    0
+  ).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, index) => {
+    return new Date(
+      visibleMonth.getFullYear(),
+      visibleMonth.getMonth(),
+      index + 1
+    )
+  })
+
+  return (
+    <div className="relative">
+      <Label>בחר תאריך</Label>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="mt-2 w-full rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-right transition-all hover:border-blue-500/35 hover:bg-white/[0.06] sm:border-cyan-200/12 sm:bg-[rgba(9,14,32,0.86)]"
+      >
+        <span className="block text-xs font-medium text-slate-500 sm:text-slate-400">
+          תאריך נבחר
+        </span>
+        <span className="mt-1 block font-heading text-base font-semibold text-slate-100">
+          {formatDateHebrew(selectedDate)}
+        </span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 left-0 z-30 mt-2 rounded-2xl border border-cyan-200/12 bg-[rgba(6,11,27,0.98)] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_48px_rgba(59,130,246,0.12)] backdrop-blur-xl"
+          dir="rtl"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  new Date(
+                    visibleMonth.getFullYear(),
+                    visibleMonth.getMonth() - 1,
+                    1
+                  )
+                )
+              }
+              className="rounded-lg border border-white/8 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-300 transition-colors hover:border-blue-500/35 hover:text-white"
+            >
+              הקודם
+            </button>
+            <p className="font-heading text-sm font-bold text-slate-100">
+              {monthTitle}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  new Date(
+                    visibleMonth.getFullYear(),
+                    visibleMonth.getMonth() + 1,
+                    1
+                  )
+                )
+              }
+              className="rounded-lg border border-white/8 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-300 transition-colors hover:border-blue-500/35 hover:text-white"
+            >
+              הבא
+            </button>
+          </div>
+
+          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-500">
+            {weekdayLabels.map((day) => (
+              <span key={day} className="py-1">
+                {day}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: leadingEmptyDays }).map((_, index) => (
+              <span key={`empty-${index}`} />
+            ))}
+            {days.map((day) => {
+              const disabled = !isSelectableBookingDate(business, day)
+              const active = sameDate(day, selected)
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  disabled={disabled}
+                  title={disabled ? "לא זמין" : undefined}
+                  onClick={() => {
+                    onSelect(toDateString(day))
+                    setOpen(false)
+                  }}
+                  className={`aspect-square rounded-xl text-sm font-semibold transition-all ${
+                    active
+                      ? "bg-linear-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25"
+                      : disabled
+                        ? "cursor-not-allowed text-slate-700"
+                        : "text-slate-200 hover:bg-blue-500/15 hover:text-cyan-200"
+                  }`}
+                >
+                  {day.getDate()}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function BookingPage() {
@@ -93,6 +339,11 @@ export default function BookingPage() {
 
   useEffect(() => {
     if (!business || !selectedService || !selectedDate) return
+    if (!isBusinessOpenOnDate(business, selectedDate)) {
+      setBookedTimes([])
+      setLoadingSlots(false)
+      return
+    }
     setLoadingSlots(true)
     supabase
       .from("appointments")
@@ -105,6 +356,16 @@ export default function BookingPage() {
         setLoadingSlots(false)
       })
   }, [business, selectedService, selectedDate])
+
+  useEffect(() => {
+    if (!business || !selectedDate) return
+    const selected = dateStringToLocalDate(selectedDate)
+    if (isSelectableBookingDate(business, selected)) return
+
+    setSelectedDate(findNextSelectableBookingDate(business))
+    setSelectedTime(null)
+    setSubmitError(null)
+  }, [business, selectedDate])
 
   async function handleBooking() {
     setSubmitError(null)
@@ -123,6 +384,11 @@ export default function BookingPage() {
     }
     if (!selectedDate) {
       setSubmitError("יש לבחור תאריך לפני קביעת התור.")
+      setStep(2)
+      return
+    }
+    if (!isBusinessOpenOnDate(business, selectedDate)) {
+      setSubmitError("העסק סגור ביום זה")
       setStep(2)
       return
     }
@@ -176,6 +442,10 @@ export default function BookingPage() {
       setSubmitError("יש לבחור תאריך לפני שממשיכים.")
       return
     }
+    if (!isBusinessOpenOnDate(business, selectedDate)) {
+      setSubmitError("העסק סגור ביום זה")
+      return
+    }
     if (!selectedTime) {
       setSubmitError("יש לבחור שעה לפני שממשיכים.")
       return
@@ -206,10 +476,31 @@ export default function BookingPage() {
     )
   }
 
-  const timeSlots = selectedService
-    ? generateTimeSlots(selectedService.duration_minutes)
-    : []
-  const availableSlots = timeSlots.filter((t) => !bookedTimes.includes(t))
+  const openingTime =
+    business?.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME
+  const closingTime =
+    business?.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME
+  const isClosedDay = selectedDate
+    ? !isBusinessOpenOnDate(business, selectedDate)
+    : false
+  // TODO: Add closed_dates table support for one-off owner closures.
+  // TODO: Let owners close a specific date from the dashboard.
+  // TODO: Show "העסק סגור ביום זה" for special closed dates too.
+  const timeSlots =
+    selectedService && !isClosedDay
+      ? generateTimeSlots(
+          selectedService.duration_minutes,
+          openingTime,
+          closingTime
+        )
+      : []
+  const availableSlots = isClosedDay
+    ? []
+    : timeSlots.filter((t) => !bookedTimes.includes(t))
+  const businessInitial = business?.name?.trim().charAt(0) || "Z"
+  const businessDescription =
+    business?.description ||
+    "בחרו שירות, תאריך ושעה שמתאימים לכם והשלימו את קביעת התור בכמה רגעים."
 
   return (
     <div
@@ -239,6 +530,92 @@ export default function BookingPage() {
                 <p className="text-xs font-semibold text-blue-300">קביעת תור</p>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-xl px-4 pt-5 sm:pt-6">
+        <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.035] shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:border-cyan-200/12 sm:bg-[rgba(7,12,29,0.92)]">
+          <div
+            className="relative h-28 sm:h-32"
+            style={{
+              background: business?.cover_image_url
+                ? `linear-gradient(rgba(5,8,22,0.18), rgba(5,8,22,0.78)), url(${business.cover_image_url}) center/cover`
+                : "radial-gradient(circle at 20% 10%, rgba(34,211,238,0.18), transparent 34%), linear-gradient(135deg, rgba(59,130,246,0.22), rgba(6,11,27,0.96))",
+            }}
+          >
+            <div className="absolute inset-0 bg-linear-to-t from-[#050816] via-transparent to-transparent" />
+          </div>
+
+          <div className="-mt-10 px-4 pb-4 sm:px-5 sm:pb-5">
+            <div className="relative flex items-end gap-3">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/16 bg-[rgba(9,14,32,0.96)] shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
+                {business?.logo_url ? (
+                  <img
+                    src={business.logo_url}
+                    alt={business.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="bg-linear-to-r from-blue-300 to-cyan-200 bg-clip-text font-heading text-3xl font-bold text-transparent">
+                    {businessInitial}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 pb-1">
+                <h2 className="truncate font-heading text-xl font-bold text-white">
+                  {business?.name}
+                </h2>
+                <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-400">
+                  {businessDescription}
+                </p>
+              </div>
+            </div>
+
+            {(business?.phone ||
+              business?.whatsapp_url ||
+              business?.instagram_url ||
+              business?.address) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {business.phone && (
+                  <a
+                    href={`tel:${business.phone}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-cyan-300/25 hover:text-white"
+                  >
+                    <Phone className="h-3.5 w-3.5 text-blue-300" />
+                    טלפון
+                  </a>
+                )}
+                {business.whatsapp_url && (
+                  <a
+                    href={business.whatsapp_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-cyan-300/25 hover:text-white"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 text-cyan-300" />
+                    WhatsApp
+                  </a>
+                )}
+                {business.instagram_url && (
+                  <a
+                    href={business.instagram_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-cyan-300/25 hover:text-white"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-pink-300" />
+                    Instagram
+                  </a>
+                )}
+                {business.address && (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300">
+                    <MapPin className="h-3.5 w-3.5 text-blue-300" />
+                    {business.address}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -303,9 +680,14 @@ export default function BookingPage() {
                 transition={{ duration: 0.22 }}
                 className="space-y-3.5"
               >
-                <h2 className="mb-4 font-heading text-xl font-semibold text-white">
-                  בחר שירות
-                </h2>
+                <div className="mb-4">
+                  <h2 className="font-heading text-xl font-semibold text-white">
+                    בחר שירות
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    בחר שירות כדי להמשיך
+                  </p>
+                </div>
                 {services.length === 0 ? (
                   <p className="py-8 text-center text-sm text-slate-500">
                     העסק לא הגדיר שירותים עדיין.
@@ -320,17 +702,11 @@ export default function BookingPage() {
                         setSubmitError(null)
                         setStep(2)
                       }}
-                      className="w-full rounded-2xl border border-white/8 bg-white/5 p-4 text-end transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/10 sm:border-cyan-200/12 sm:bg-[rgba(9,14,32,0.86)] sm:hover:border-cyan-300/35 sm:hover:bg-[rgba(12,20,42,0.96)]"
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.borderColor =
-                          "rgba(59,130,246,0.4)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.borderColor =
-                          window.innerWidth >= 640
-                            ? "rgba(125,211,252,0.12)"
-                            : "rgba(255,255,255,0.08)")
-                      }
+                      className={`w-full rounded-2xl border p-4 text-end transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/15 ${
+                        selectedService?.id === s.id
+                          ? "border-cyan-300/45 bg-blue-500/10 ring-1 ring-cyan-300/25"
+                          : "border-white/8 bg-white/5 hover:border-blue-500/45 hover:bg-white/8 sm:border-cyan-200/12 sm:bg-[rgba(9,14,32,0.86)] sm:hover:border-cyan-300/45 sm:hover:bg-[rgba(12,20,42,0.96)]"
+                      }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
@@ -341,7 +717,7 @@ export default function BookingPage() {
                             {s.name}
                           </p>
                           <div className="mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-slate-500 sm:font-medium sm:text-slate-400">
-                            <span>{s.duration_minutes} דקות</span>
+                            <span>משך: {s.duration_minutes} דקות</span>
                             {s.price != null && (
                               <span className="font-semibold text-blue-400">
                                 ₪{s.price}
@@ -388,21 +764,15 @@ export default function BookingPage() {
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>תאריך</Label>
-                  <Input
-                    type="date"
-                    value={selectedDate}
-                    min={todayDateString()}
-                    className="sm:h-11 sm:rounded-2xl sm:border-cyan-200/14 sm:bg-[rgba(6,11,27,0.9)] sm:px-4 sm:font-medium sm:text-slate-100 sm:[color-scheme:dark] sm:shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_0_0_1px_rgba(59,130,246,0.02)] sm:focus-visible:border-cyan-300/60 sm:focus-visible:ring-cyan-400/25 sm:[&::-webkit-calendar-picker-indicator]:cursor-pointer sm:[&::-webkit-calendar-picker-indicator]:opacity-80 sm:[&::-webkit-calendar-picker-indicator]:hue-rotate-[155deg] sm:[&::-webkit-calendar-picker-indicator]:invert sm:[&::-webkit-calendar-picker-indicator]:saturate-[3] sm:[&::-webkit-calendar-picker-indicator]:sepia"
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value)
-                      setSelectedTime(null)
-                      setSubmitError(null)
-                    }}
-                    dir="ltr"
-                  />
-                </div>
+                <CalendarDatePicker
+                  business={business}
+                  selectedDate={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date)
+                    setSelectedTime(null)
+                    setSubmitError(null)
+                  }}
+                />
 
                 {selectedDate && (
                   <div className="space-y-3 rounded-2xl border border-white/6 bg-white/[0.03] p-3.5 sm:border-cyan-200/10 sm:bg-[rgba(6,11,27,0.78)]">
@@ -413,9 +783,13 @@ export default function BookingPage() {
                       <div className="flex justify-center py-5">
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                       </div>
+                    ) : isClosedDay ? (
+                      <p className="py-4 text-center text-sm text-muted-foreground">
+                        העסק סגור ביום זה
+                      </p>
                     ) : availableSlots.length === 0 ? (
                       <p className="py-4 text-center text-sm text-muted-foreground">
-                        אין שעות פנויות בתאריך זה.
+                        אין שעות פנויות ביום זה
                       </p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

@@ -4,6 +4,15 @@ export interface Business {
   name: string
   slug: string
   phone: string | null
+  opening_time?: string | null
+  closing_time?: string | null
+  working_days?: number[] | string | null
+  logo_url?: string | null
+  cover_image_url?: string | null
+  description?: string | null
+  whatsapp_url?: string | null
+  instagram_url?: string | null
+  address?: string | null
   created_at: string
 }
 
