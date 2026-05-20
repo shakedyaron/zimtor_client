@@ -9,9 +9,17 @@ import {
   Clock,
   Phone,
   ChevronDown,
+  ImageIcon,
+  Loader2,
+  UploadCloud,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
+import {
+  deleteStorageFile,
+  uploadBusinessCover,
+  uploadBusinessLogo,
+} from "@/lib/storage"
 import type { Business, Service, Appointment } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -144,6 +152,8 @@ export default function DashboardPage() {
   const [businessLogoUrl, setBusinessLogoUrl] = useState("")
   const [businessCoverUrl, setBusinessCoverUrl] = useState("")
   const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
   const [showProfileSettings, setShowProfileSettings] = useState(false)
@@ -336,6 +346,70 @@ export default function DashboardPage() {
       setAvailabilitySuccess("הגדרות הזמינות נשמרו.")
     }
     setSavingAvailability(false)
+  }
+
+  async function handleBusinessImageUpload(
+    imageType: "logo" | "cover",
+    file: File | undefined
+  ) {
+    if (!file || !business || !user) return
+
+    const isLogo = imageType === "logo"
+    const bucket = isLogo ? "business-logos" : "business-covers"
+    const oldImageUrl = isLogo ? businessLogoUrl : businessCoverUrl
+
+    setProfileError(null)
+    setProfileSuccess(null)
+    if (isLogo) {
+      setUploadingLogo(true)
+    } else {
+      setUploadingCover(true)
+    }
+
+    try {
+      const uploaded = isLogo
+        ? await uploadBusinessLogo(user.id, file)
+        : await uploadBusinessCover(user.id, file)
+
+      const { data, error } = await supabase
+        .from("businesses")
+        .update(
+          isLogo
+            ? { logo_url: uploaded.publicUrl }
+            : { cover_image_url: uploaded.publicUrl }
+        )
+        .eq("id", business.id)
+        .select("*")
+        .single()
+
+      if (error) {
+        await deleteStorageFile(bucket, uploaded.path)
+        throw new Error("שגיאה בשמירת התמונה בעסק. נסה שוב.")
+      }
+
+      setBusiness(data)
+      if (isLogo) {
+        setBusinessLogoUrl(data.logo_url ?? "")
+      } else {
+        setBusinessCoverUrl(data.cover_image_url ?? "")
+      }
+      setProfileSuccess(
+        isLogo ? "הלוגו נשמר בהצלחה." : "תמונת הקאבר נשמרה בהצלחה."
+      )
+
+      await deleteStorageFile(bucket, oldImageUrl)
+    } catch (error) {
+      console.error("handleBusinessImageUpload: upload failed", error)
+      setProfileError(
+        error instanceof Error ? error.message : "שגיאה בהעלאת התמונה. נסה שוב."
+      )
+    } finally {
+      if (isLogo) {
+        setUploadingLogo(false)
+      } else {
+        setUploadingCover(false)
+      }
+    }
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -695,45 +769,109 @@ export default function DashboardPage() {
                     placeholder="כתובת העסק"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="business-logo"
-                    className="text-xs text-slate-400"
-                  >
-                    Logo URL
-                  </Label>
-                  <Input
-                    id="business-logo"
-                    value={businessLogoUrl}
-                    onChange={(e) => {
-                      setBusinessLogoUrl(e.target.value)
-                      setProfileError(null)
-                      setProfileSuccess(null)
-                    }}
-                    className="border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-500"
-                    placeholder="https://..."
-                    dir="ltr"
-                  />
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-400">לוגו</Label>
+                  <div className="rounded-2xl border border-cyan-300/12 bg-white/[0.035] p-3 shadow-[0_16px_44px_rgba(14,165,233,0.08)]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/20 bg-slate-950/60 shadow-[0_0_28px_rgba(34,211,238,0.12)]">
+                        {businessLogoUrl ? (
+                          <img
+                            src={businessLogoUrl}
+                            alt="לוגו העסק"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-cyan-300/70" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-100">
+                          {businessLogoUrl ? "לוגו קיים" : "אין לוגו עדיין"}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">
+                          PNG, JPG או WEBP עד 5MB
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      id="business-logo-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(e) => {
+                        handleBusinessImageUpload(
+                          "logo",
+                          e.currentTarget.files?.[0]
+                        )
+                        e.currentTarget.value = ""
+                      }}
+                    />
+                    <label
+                      htmlFor="business-logo-upload"
+                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-cyan-300/18 bg-blue-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:border-cyan-300/35 hover:bg-blue-500/15"
+                    >
+                      {uploadingLogo ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4" />
+                      )}
+                      {uploadingLogo
+                        ? "מעלה לוגו..."
+                        : businessLogoUrl
+                          ? "החלף לוגו"
+                          : "העלה לוגו"}
+                    </label>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="business-cover"
-                    className="text-xs text-slate-400"
-                  >
-                    Cover image URL
-                  </Label>
-                  <Input
-                    id="business-cover"
-                    value={businessCoverUrl}
-                    onChange={(e) => {
-                      setBusinessCoverUrl(e.target.value)
-                      setProfileError(null)
-                      setProfileSuccess(null)
-                    }}
-                    className="border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-500"
-                    placeholder="https://..."
-                    dir="ltr"
-                  />
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-400">תמונת קאבר</Label>
+                  <div className="rounded-2xl border border-cyan-300/12 bg-white/[0.035] p-3 shadow-[0_16px_44px_rgba(14,165,233,0.08)]">
+                    <div className="relative h-28 overflow-hidden rounded-2xl border border-cyan-200/16 bg-slate-950/60 shadow-[0_0_32px_rgba(34,211,238,0.1)]">
+                      {businessCoverUrl ? (
+                        <img
+                          src={businessCoverUrl}
+                          alt="תמונת קאבר של העסק"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(34,211,238,0.18),transparent_36%),linear-gradient(135deg,rgba(59,130,246,0.22),rgba(6,11,27,0.95))]">
+                          <ImageIcon className="h-7 w-7 text-cyan-300/70" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-linear-to-t from-[#050816]/70 via-transparent to-transparent" />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-400">
+                      תמונה רחבה לדף ההזמנות, PNG/JPG/WEBP עד 5MB
+                    </p>
+                    <input
+                      id="business-cover-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(e) => {
+                        handleBusinessImageUpload(
+                          "cover",
+                          e.currentTarget.files?.[0]
+                        )
+                        e.currentTarget.value = ""
+                      }}
+                    />
+                    <label
+                      htmlFor="business-cover-upload"
+                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-cyan-300/18 bg-blue-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:border-cyan-300/35 hover:bg-blue-500/15"
+                    >
+                      {uploadingCover ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4" />
+                      )}
+                      {uploadingCover
+                        ? "מעלה קאבר..."
+                        : businessCoverUrl
+                          ? "החלף קאבר"
+                          : "העלה קאבר"}
+                    </label>
+                  </div>
                 </div>
               </div>
 

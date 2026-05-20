@@ -536,20 +536,21 @@ export default function BookingPage() {
 
       <div className="mx-auto max-w-xl px-4 pt-5 sm:pt-6">
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.035] shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:border-cyan-200/12 sm:bg-[rgba(7,12,29,0.92)]">
-          <div
-            className="relative h-28 sm:h-32"
-            style={{
-              background: business?.cover_image_url
-                ? `linear-gradient(rgba(5,8,22,0.18), rgba(5,8,22,0.78)), url(${business.cover_image_url}) center/cover`
-                : "radial-gradient(circle at 20% 10%, rgba(34,211,238,0.18), transparent 34%), linear-gradient(135deg, rgba(59,130,246,0.22), rgba(6,11,27,0.96))",
-            }}
-          >
-            <div className="absolute inset-0 bg-linear-to-t from-[#050816] via-transparent to-transparent" />
+          <div className="relative h-28 overflow-hidden bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.18),transparent_34%),linear-gradient(135deg,rgba(59,130,246,0.22),rgba(6,11,27,0.96))] sm:h-32">
+            {business?.cover_image_url && (
+              <img
+                src={business.cover_image_url}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            )}
+            <div className="absolute inset-0 bg-linear-to-t from-[#050816] via-[#050816]/35 to-[#050816]/10" />
+            <div className="absolute inset-0 bg-linear-to-r from-cyan-400/10 via-transparent to-blue-500/10" />
           </div>
 
           <div className="-mt-10 px-4 pb-4 sm:px-5 sm:pb-5">
             <div className="relative flex items-end gap-3">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/16 bg-[rgba(9,14,32,0.96)] shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/25 bg-[rgba(9,14,32,0.96)] shadow-[0_18px_46px_rgba(34,211,238,0.16)] ring-1 ring-cyan-300/10">
                 {business?.logo_url ? (
                   <img
                     src={business.logo_url}
