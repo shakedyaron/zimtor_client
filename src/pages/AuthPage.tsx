@@ -75,17 +75,17 @@ export default function AuthPage() {
         <div
           className="absolute -right-48 -top-48 h-96 w-96 rounded-full"
           style={{
-            filter: "blur(120px)",
-            opacity: 0.13,
-            background: "radial-gradient(circle, #3b82f6, transparent 70%)",
+            filter: "blur(140px)",
+            opacity: 0.10,
+            background: "radial-gradient(circle, #6366f1, transparent 70%)",
           }}
         />
         <div
           className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full"
           style={{
-            filter: "blur(100px)",
-            opacity: 0.08,
-            background: "radial-gradient(circle, #06b6d4, transparent 70%)",
+            filter: "blur(120px)",
+            opacity: 0.06,
+            background: "radial-gradient(circle, #8b5cf6, transparent 70%)",
           }}
         />
         <div
@@ -130,7 +130,7 @@ export default function AuthPage() {
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.10)",
             backdropFilter: "blur(24px)",
-            boxShadow: "0 0 40px rgba(59,130,246,0.10), 0 24px 48px rgba(0,0,0,0.35)",
+            boxShadow: "0 0 40px rgba(99,102,241,0.07), 0 24px 48px rgba(0,0,0,0.38)",
           }}
         >
           {/* Mode toggle */}
@@ -147,7 +147,7 @@ export default function AuthPage() {
                 }}
                 className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all duration-200 ${
                   mode === m
-                    ? "bg-blue-500 text-white shadow-md shadow-blue-500/25"
+                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -210,7 +210,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:opacity-90 hover:shadow-blue-500/45 disabled:opacity-60"
+              className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 hover:shadow-indigo-500/28 disabled:opacity-60"
             >
               {submitting
                 ? "טוען..."

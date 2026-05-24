@@ -178,7 +178,7 @@ export default function CreateBusinessPage() {
             border: "1px solid rgba(255,255,255,0.10)",
             backdropFilter: "blur(24px)",
             boxShadow:
-              "0 0 40px rgba(59,130,246,0.10), 0 24px 48px rgba(0,0,0,0.35)",
+              "0 0 40px rgba(99,102,241,0.07), 0 24px 48px rgba(0,0,0,0.38)",
           }}
         >
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -234,7 +234,7 @@ export default function CreateBusinessPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 disabled:opacity-60"
+              className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 disabled:opacity-60"
             >
               {submitting ? "יוצר עסק..." : "צור עסק והמשך"}
             </button>

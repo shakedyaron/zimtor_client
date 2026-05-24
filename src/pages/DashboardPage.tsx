@@ -482,7 +482,7 @@ export default function DashboardPage() {
         <p className="text-sm text-red-400">{loadError}</p>
         <button
           onClick={() => loadData()}
-          className="rounded-lg bg-blue-500/15 px-4 py-2 text-sm font-medium text-blue-400 transition hover:bg-blue-500/25"
+          className="rounded-lg bg-indigo-500/12 px-4 py-2 text-sm font-medium text-indigo-400 transition hover:bg-indigo-500/20"
         >
           נסה שוב
         </button>
@@ -502,13 +502,13 @@ export default function DashboardPage() {
         className="sticky top-0 z-10 border-b"
         style={{
           background: "rgba(5,8,22,0.94)",
-          borderColor: "rgba(125,211,252,0.12)",
+          borderColor: "rgba(99,102,241,0.10)",
           backdropFilter: "blur(20px)",
         }}
       >
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-            <span className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-xl font-bold text-transparent">
+            <span className="bg-linear-to-r from-indigo-300 to-violet-300 bg-clip-text font-heading text-xl font-bold text-transparent">
               zimtor
             </span>
             <span className="text-white/20">·</span>
@@ -521,7 +521,7 @@ export default function DashboardPage() {
               href={bookingUrl}
               target="_blank"
               rel="noreferrer"
-              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-blue-500/10 hover:text-white sm:flex"
+              className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-indigo-500/8 hover:text-white sm:flex"
             >
               דף ההזמנות
               <ExternalLink className="h-3 w-3" />
@@ -551,13 +551,13 @@ export default function DashboardPage() {
             className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
             style={{
               background: "rgba(9,14,32,0.86)",
-              border: "1px solid rgba(125,211,252,0.14)",
+              border: "1px solid rgba(99,102,241,0.12)",
             }}
           >
             <p className="mb-1 text-xs font-medium text-slate-300">
               תורים קרובים
             </p>
-            <p className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
+            <p className="bg-linear-to-r from-indigo-300 to-violet-300 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
               {upcomingAppointments.length}
             </p>
           </div>
@@ -565,13 +565,13 @@ export default function DashboardPage() {
             className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
             style={{
               background: "rgba(9,14,32,0.86)",
-              border: "1px solid rgba(125,211,252,0.14)",
+              border: "1px solid rgba(99,102,241,0.12)",
             }}
           >
             <p className="mb-1 text-xs font-medium text-slate-300">
               שירותים פעילים
             </p>
-            <p className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
+            <p className="bg-linear-to-r from-indigo-300 to-violet-300 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
               {services.length}
             </p>
           </div>
@@ -580,7 +580,7 @@ export default function DashboardPage() {
               className="hidden flex-col justify-center rounded-2xl p-5 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:flex"
               style={{
                 background: "rgba(9,14,32,0.86)",
-                border: "1px solid rgba(125,211,252,0.14)",
+                border: "1px solid rgba(99,102,241,0.12)",
               }}
             >
               <p className="mb-1 text-xs font-medium text-slate-300">טלפון</p>
@@ -599,14 +599,14 @@ export default function DashboardPage() {
           className="mb-4 overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:mb-5"
           style={{
             background: "rgba(7,12,29,0.9)",
-            border: "1px solid rgba(125,211,252,0.12)",
+            border: "1px solid rgba(99,102,241,0.10)",
           }}
         >
           <div
             className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4"
             style={{
               borderBottom: showProfileSettings
-                ? "1px solid rgba(125,211,252,0.1)"
+                ? "1px solid rgba(99,102,241,0.08)"
                 : "0",
             }}
           >
@@ -615,7 +615,7 @@ export default function DashboardPage() {
               onClick={() => setShowProfileSettings((open) => !open)}
               className="flex min-w-0 flex-1 items-center gap-3 text-right"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-blue-500/10 text-cyan-300">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-indigo-300/12 bg-indigo-500/8 text-indigo-300">
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
                     showProfileSettings ? "rotate-180" : ""
@@ -635,7 +635,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={savingProfile}
-                className="shrink-0 rounded-lg bg-linear-to-r from-blue-500 to-cyan-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-500/15 transition hover:opacity-90 disabled:opacity-60"
+                className="shrink-0 rounded-lg bg-linear-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/10 transition hover:opacity-90 disabled:opacity-60"
               >
                 {savingProfile ? "שומר..." : "שמור"}
               </button>
@@ -771,9 +771,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-400">לוגו</Label>
-                  <div className="rounded-2xl border border-cyan-300/12 bg-white/[0.035] p-3 shadow-[0_16px_44px_rgba(14,165,233,0.08)]">
+                  <div className="rounded-2xl border border-indigo-300/10 bg-white/[0.03] p-3 shadow-[0_16px_40px_rgba(99,102,241,0.06)]">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/20 bg-slate-950/60 shadow-[0_0_28px_rgba(34,211,238,0.12)]">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-indigo-200/16 bg-slate-950/60 shadow-[0_0_24px_rgba(99,102,241,0.10)]">
                         {businessLogoUrl ? (
                           <img
                             src={businessLogoUrl}
@@ -781,7 +781,7 @@ export default function DashboardPage() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <ImageIcon className="h-6 w-6 text-cyan-300/70" />
+                          <ImageIcon className="h-6 w-6 text-indigo-300/60" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -808,7 +808,7 @@ export default function DashboardPage() {
                     />
                     <label
                       htmlFor="business-logo-upload"
-                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-cyan-300/18 bg-blue-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:border-cyan-300/35 hover:bg-blue-500/15"
+                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-indigo-300/15 bg-indigo-500/8 px-3 py-2 text-xs font-bold text-indigo-200 transition-colors hover:border-indigo-300/28 hover:bg-indigo-500/12"
                     >
                       {uploadingLogo ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -825,8 +825,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-400">תמונת קאבר</Label>
-                  <div className="rounded-2xl border border-cyan-300/12 bg-white/[0.035] p-3 shadow-[0_16px_44px_rgba(14,165,233,0.08)]">
-                    <div className="relative h-28 overflow-hidden rounded-2xl border border-cyan-200/16 bg-slate-950/60 shadow-[0_0_32px_rgba(34,211,238,0.1)]">
+                  <div className="rounded-2xl border border-indigo-300/10 bg-white/[0.03] p-3 shadow-[0_16px_40px_rgba(99,102,241,0.06)]">
+                    <div className="relative h-28 overflow-hidden rounded-2xl border border-indigo-200/12 bg-slate-950/60 shadow-[0_0_28px_rgba(99,102,241,0.08)]">
                       {businessCoverUrl ? (
                         <img
                           src={businessCoverUrl}
@@ -834,8 +834,8 @@ export default function DashboardPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(34,211,238,0.18),transparent_36%),linear-gradient(135deg,rgba(59,130,246,0.22),rgba(6,11,27,0.95))]">
-                          <ImageIcon className="h-7 w-7 text-cyan-300/70" />
+                        <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.18),transparent_36%),linear-gradient(135deg,rgba(99,102,241,0.20),rgba(6,11,27,0.95))]">
+                          <ImageIcon className="h-7 w-7 text-indigo-300/60" />
                         </div>
                       )}
                       <div className="absolute inset-0 bg-linear-to-t from-[#050816]/70 via-transparent to-transparent" />
@@ -858,7 +858,7 @@ export default function DashboardPage() {
                     />
                     <label
                       htmlFor="business-cover-upload"
-                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-cyan-300/18 bg-blue-500/10 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:border-cyan-300/35 hover:bg-blue-500/15"
+                      className="mt-3 flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-indigo-300/15 bg-indigo-500/8 px-3 py-2 text-xs font-bold text-indigo-200 transition-colors hover:border-indigo-300/28 hover:bg-indigo-500/12"
                     >
                       {uploadingCover ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -897,14 +897,14 @@ export default function DashboardPage() {
           className="mb-4 overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:mb-5"
           style={{
             background: "rgba(7,12,29,0.9)",
-            border: "1px solid rgba(125,211,252,0.12)",
+            border: "1px solid rgba(99,102,241,0.10)",
           }}
         >
           <div
             className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4"
             style={{
               borderBottom: showAvailabilitySettings
-                ? "1px solid rgba(125,211,252,0.1)"
+                ? "1px solid rgba(99,102,241,0.08)"
                 : "0",
             }}
           >
@@ -913,7 +913,7 @@ export default function DashboardPage() {
               onClick={() => setShowAvailabilitySettings((open) => !open)}
               className="flex min-w-0 flex-1 items-center gap-3 text-right"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-blue-500/10 text-cyan-300">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-indigo-300/12 bg-indigo-500/8 text-indigo-300">
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
                     showAvailabilitySettings ? "rotate-180" : ""
@@ -933,7 +933,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={savingAvailability}
-                className="shrink-0 rounded-lg bg-linear-to-r from-blue-500 to-cyan-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-blue-500/15 transition hover:opacity-90 disabled:opacity-60"
+                className="shrink-0 rounded-lg bg-linear-to-r from-indigo-500 to-violet-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/10 transition hover:opacity-90 disabled:opacity-60"
               >
                 {savingAvailability ? "שומר..." : "שמור"}
               </button>
@@ -956,7 +956,7 @@ export default function DashboardPage() {
                       setAvailabilityError(null)
                       setAvailabilitySuccess(null)
                     }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base sm:text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     dir="ltr"
                   >
                     {TIME_OPTIONS.map((time) => (
@@ -975,7 +975,7 @@ export default function DashboardPage() {
                       setAvailabilityError(null)
                       setAvailabilitySuccess(null)
                     }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base sm:text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     dir="ltr"
                   >
                     {TIME_OPTIONS.map((time) => (
@@ -999,8 +999,8 @@ export default function DashboardPage() {
                         onClick={() => toggleWorkingDay(day.value)}
                         className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                           active
-                            ? "border-cyan-300/35 bg-blue-500/15 text-cyan-200"
-                            : "border-white/8 bg-white/4 text-slate-400 hover:border-cyan-300/20 hover:text-slate-200"
+                            ? "border-indigo-300/30 bg-indigo-500/12 text-indigo-200"
+                            : "border-white/8 bg-white/4 text-slate-400 hover:border-indigo-300/15 hover:text-slate-200"
                         }`}
                       >
                         {day.label}
@@ -1036,12 +1036,12 @@ export default function DashboardPage() {
               className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
               style={{
                 background: "rgba(7,12,29,0.9)",
-                border: "1px solid rgba(125,211,252,0.12)",
+                border: "1px solid rgba(99,102,241,0.10)",
               }}
             >
               <div
                 className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4"
-                style={{ borderBottom: "1px solid rgba(125,211,252,0.1)" }}
+                style={{ borderBottom: "1px solid rgba(99,102,241,0.08)" }}
               >
                 <h2 className="font-heading text-base font-bold text-slate-50">
                   שירותים
@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAddService(!showAddService)}
-                  className="shrink-0 gap-1.5 text-xs font-medium text-slate-300 hover:text-blue-300"
+                  className="shrink-0 gap-1.5 text-xs font-medium text-slate-300 hover:text-indigo-300"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   הוסף שירות
@@ -1065,7 +1065,7 @@ export default function DashboardPage() {
                   noValidate
                   className="space-y-3 px-4 py-4 sm:px-5"
                   style={{
-                    borderBottom: "1px solid rgba(125,211,252,0.1)",
+                    borderBottom: "1px solid rgba(99,102,241,0.08)",
                     background: "rgba(15,23,42,0.45)",
                   }}
                 >
@@ -1076,7 +1076,7 @@ export default function DashboardPage() {
                         placeholder="תספורת גברים"
                         value={newServiceName}
                         onChange={(e) => setNewServiceName(e.target.value)}
-                        className="h-8 text-sm"
+                        className="h-8 text-base sm:text-sm"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1088,7 +1088,7 @@ export default function DashboardPage() {
                         onChange={(e) => setNewServiceDuration(e.target.value)}
                         min={5}
                         dir="ltr"
-                        className="h-8 text-sm"
+                        className="h-8 text-base sm:text-sm"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1100,7 +1100,7 @@ export default function DashboardPage() {
                         onChange={(e) => setNewServicePrice(e.target.value)}
                         min={0}
                         dir="ltr"
-                        className="h-8 text-sm"
+                        className="h-8 text-base sm:text-sm"
                       />
                     </div>
                   </div>
@@ -1125,7 +1125,7 @@ export default function DashboardPage() {
                     <button
                       type="submit"
                       disabled={addingService}
-                      className="h-7 rounded-lg bg-linear-to-r from-blue-500 to-cyan-500 px-3 text-xs font-bold text-white disabled:opacity-60"
+                      className="h-7 rounded-lg bg-linear-to-r from-indigo-500 to-violet-500 px-3 text-xs font-bold text-white disabled:opacity-60"
                     >
                       {addingService ? "שומר..." : "שמור"}
                     </button>
@@ -1135,7 +1135,7 @@ export default function DashboardPage() {
 
               <div
                 className="divide-y"
-                style={{ borderColor: "rgba(125,211,252,0.1)" }}
+                style={{ borderColor: "rgba(99,102,241,0.08)" }}
               >
                 {services.length === 0 ? (
                   <p className="px-5 py-8 text-center text-sm text-slate-400">
@@ -1155,7 +1155,7 @@ export default function DashboardPage() {
                           <Clock className="h-3 w-3" />
                           <span>{s.duration_minutes} דקות</span>
                           {s.price != null && (
-                            <span className="font-semibold text-cyan-300">
+                            <span className="font-semibold text-indigo-300">
                               ₪{s.price}
                             </span>
                           )}
@@ -1184,24 +1184,24 @@ export default function DashboardPage() {
               className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
               style={{
                 background: "rgba(7,12,29,0.9)",
-                border: "1px solid rgba(125,211,252,0.12)",
+                border: "1px solid rgba(99,102,241,0.10)",
               }}
             >
               <div
                 className="flex items-center justify-between px-4 py-3.5 sm:px-5 sm:py-4"
-                style={{ borderBottom: "1px solid rgba(125,211,252,0.1)" }}
+                style={{ borderBottom: "1px solid rgba(99,102,241,0.08)" }}
               >
                 <h2 className="font-heading text-base font-bold text-slate-50">
                   תורים קרובים
                 </h2>
-                <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400">
+                <span className="rounded-full bg-indigo-500/12 px-2 py-0.5 text-xs font-medium text-indigo-400">
                   {upcomingAppointments.length}
                 </span>
               </div>
 
               <div
                 className="divide-y lg:max-h-[460px] lg:overflow-y-auto"
-                style={{ borderColor: "rgba(125,211,252,0.1)" }}
+                style={{ borderColor: "rgba(99,102,241,0.08)" }}
               >
                 {upcomingAppointments.length === 0 ? (
                   <p className="px-5 py-8 text-center text-sm text-slate-400">
@@ -1277,7 +1277,7 @@ export default function DashboardPage() {
           className="mt-4 rounded-2xl px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:px-5"
           style={{
             background: "rgba(7,12,29,0.9)",
-            border: "1px solid rgba(59,130,246,0.28)",
+            border: "1px solid rgba(99,102,241,0.20)",
           }}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1288,13 +1288,13 @@ export default function DashboardPage() {
               <p
                 dir="ltr"
                 title={`${window.location.origin}/${business?.slug ?? ""}`}
-                className="max-w-[220px] truncate font-mono text-sm font-semibold text-cyan-300 sm:max-w-sm"
+                className="max-w-[220px] truncate font-mono text-sm font-semibold text-indigo-300 sm:max-w-sm"
               >
                 {bookingDisplayUrl}
               </p>
             </div>
             <a href={bookingUrl} target="_blank" rel="noreferrer">
-              <button className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 sm:w-auto">
+              <button className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-500/12 transition hover:opacity-90 sm:w-auto">
                 פתח
                 <ExternalLink className="h-3 w-3" />
               </button>
