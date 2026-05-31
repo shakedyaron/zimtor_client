@@ -13,6 +13,7 @@ export interface Business {
   whatsapp_url?: string | null
   instagram_url?: string | null
   address?: string | null
+  business_theme?: string | null
   created_at: string
 }
 

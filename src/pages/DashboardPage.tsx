@@ -13,6 +13,7 @@ import {
   UploadCloud,
   Calendar,
   History,
+  Check,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
@@ -104,8 +105,7 @@ function getAppointmentDateTime(appointment: Appointment) {
 }
 
 function isUpcomingAppointment(appointment: Appointment) {
-  if (normalizeAppointmentStatus(appointment.status) !== "future")
-    return false
+  if (normalizeAppointmentStatus(appointment.status) !== "future") return false
   const appointmentDateTime = getAppointmentDateTime(appointment)
   return appointmentDateTime
     ? appointmentDateTime.getTime() >= Date.now()
@@ -192,6 +192,8 @@ export default function DashboardPage() {
   const [showProfileSettings, setShowProfileSettings] = useState(false)
   const [showAvailabilitySettings, setShowAvailabilitySettings] =
     useState(false)
+  const [businessTheme, setBusinessTheme] = useState<string>("dark")
+  const [themeSuccess, setThemeSuccess] = useState<string | null>(null)
 
   const appointmentsRef = useRef<Appointment[]>([])
   appointmentsRef.current = appointments
@@ -253,6 +255,7 @@ export default function DashboardPage() {
     }
 
     setBusiness(biz)
+    setBusinessTheme(biz.business_theme ?? "dark")
     setOpeningTime(biz.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME)
     setClosingTime(biz.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME)
     setWorkingDays(getBusinessWorkingDays(biz))
@@ -513,6 +516,25 @@ export default function DashboardPage() {
     setSavingProfile(false)
   }
 
+  async function handleSaveTheme(theme: string) {
+    if (!business) return
+    const prev = businessTheme
+    setBusinessTheme(theme)
+    setThemeSuccess(null)
+    const { error } = await supabase
+      .from("businesses")
+      .update({ business_theme: theme })
+      .eq("id", business.id)
+    if (error) {
+      console.error("handleSaveTheme: update failed", error)
+      setBusinessTheme(prev)
+      return
+    }
+    setBusiness((b) => (b ? { ...b, business_theme: theme } : b))
+    setThemeSuccess("העיצוב נשמר.")
+    setTimeout(() => setThemeSuccess(null), 3000)
+  }
+
   async function handleSignOut() {
     await signOut()
     navigate("/")
@@ -623,9 +645,13 @@ export default function DashboardPage() {
 
   const bookingUrl = `/${business?.slug}`
   const bookingDisplayUrl = `${new URL(window.location.origin).host}/${business?.slug ?? ""}`
+  const isLightTheme = businessTheme === "light"
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div
+      className={`min-h-screen bg-background ${isLightTheme ? "dashboard-light" : ""}`}
+      dir="rtl"
+    >
       {/* Header */}
       <header
         className="sticky top-0 z-10 border-b"
@@ -674,7 +700,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 sm:gap-4"
+          className="dashboard-dark-stat-group mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 sm:gap-4"
         >
           <div
             className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
@@ -690,6 +716,7 @@ export default function DashboardPage() {
               {upcomingAppointments.length}
             </p>
           </div>
+
           <div
             className="rounded-2xl p-4 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:p-5"
             style={{
@@ -697,13 +724,14 @@ export default function DashboardPage() {
               border: "1px solid rgba(99,102,241,0.12)",
             }}
           >
-            <p className="mb-1 text-xs font-medium text-slate-300">
+            <p className="mb-1 text-xs font-medium text-slate-500">
               שירותים פעילים
             </p>
             <p className="bg-linear-to-r from-indigo-300 to-violet-300 bg-clip-text font-heading text-3xl leading-none font-bold text-transparent sm:text-4xl">
               {services.length}
             </p>
           </div>
+
           {business?.phone && (
             <div
               className="hidden flex-col justify-center rounded-2xl p-5 shadow-[0_14px_40px_rgba(0,0,0,0.14)] sm:flex"
@@ -724,7 +752,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.02 }}
-          className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-4"
+          className="dashboard-dark-stat-group mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-4"
         >
           <button
             type="button"
@@ -1169,6 +1197,145 @@ export default function DashboardPage() {
           )}
         </motion.form>
 
+        {/* Theme section */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="mb-4 overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:mb-5"
+          style={{
+            background: "rgba(7,12,29,0.9)",
+            border: "1px solid rgba(99,102,241,0.10)",
+          }}
+        >
+          <div
+            className="px-4 py-3.5 sm:px-5 sm:py-4"
+            style={{ borderBottom: "1px solid rgba(99,102,241,0.08)" }}
+          >
+            <span className="block font-heading text-base font-bold text-slate-50">
+              עיצוב מערכת
+            </span>
+            <span className="mt-1 block text-xs text-slate-400">
+              בחר מצב תצוגה לעסק שלך
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 px-4 py-4 sm:px-5">
+            {(
+              [
+                {
+                  key: "dark",
+                  label: "מצב כהה",
+                  preview: (
+                    <div
+                      className="mb-2.5 h-14 overflow-hidden rounded-lg"
+                      style={{
+                        background: "#060814",
+                        border: "1px solid rgba(99,102,241,0.14)",
+                      }}
+                    >
+                      <div className="flex items-center gap-1 px-2 pt-1.5">
+                        <div className="h-1 w-1 rounded-full bg-indigo-500/60" />
+                        <div className="h-0.5 flex-1 rounded-full bg-white/8" />
+                      </div>
+                      <div className="mt-1.5 space-y-1 px-2">
+                        <div className="h-1.5 w-10 rounded-full bg-white/14" />
+                        <div className="h-1 w-6 rounded-full bg-indigo-400/35" />
+                      </div>
+                      <div className="mt-2 flex gap-1 px-2">
+                        <div
+                          className="h-4 flex-1 rounded"
+                          style={{
+                            background: "rgba(99,102,241,0.14)",
+                            border: "1px solid rgba(99,102,241,0.22)",
+                          }}
+                        />
+                        <div
+                          className="h-4 flex-1 rounded"
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.07)",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: "light",
+                  label: "מצב בהיר",
+                  preview: (
+                    <div
+                      className="mb-2.5 h-14 overflow-hidden rounded-lg"
+                      style={{
+                        background: "#FAF7F2",
+                        border: "1px solid #E5E7EB",
+                      }}
+                    >
+                      <div className="flex items-center gap-1 px-2 pt-1.5">
+                        <div className="h-1 w-1 rounded-full bg-indigo-500" />
+                        <div className="h-0.5 flex-1 rounded-full bg-gray-200" />
+                      </div>
+                      <div className="mt-1.5 space-y-1 px-2">
+                        <div className="h-1.5 w-10 rounded-full bg-gray-800/35" />
+                        <div className="h-1 w-6 rounded-full bg-indigo-500/40" />
+                      </div>
+                      <div className="mt-2 flex gap-1 px-2">
+                        <div
+                          className="h-4 flex-1 rounded"
+                          style={{
+                            background: "#EEF2FF",
+                            border: "1px solid #C7D2FE",
+                          }}
+                        />
+                        <div
+                          className="h-4 flex-1 rounded"
+                          style={{
+                            background: "#FFFFFF",
+                            border: "1px solid #E5E7EB",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ),
+                },
+              ] as const
+            ).map(({ key, label, preview }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSaveTheme(key)}
+                className={`relative overflow-hidden rounded-xl border p-3 text-right transition-all duration-200 ${
+                  businessTheme === key
+                    ? "border-indigo-400/40 ring-2 ring-indigo-400/20"
+                    : "border-white/8 hover:border-indigo-400/20"
+                }`}
+                style={{ background: "rgba(255,255,255,0.04)" }}
+              >
+                {preview}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-200">
+                    {label}
+                  </span>
+                  {businessTheme === key && (
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500">
+                      <Check className="h-2.5 w-2.5 text-white" />
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {themeSuccess && (
+            <div className="px-4 pb-4 sm:px-5">
+              <p className="rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-400">
+                {themeSuccess}
+              </p>
+            </div>
+          )}
+        </motion.div>
+
         {/* Today summary */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -1241,7 +1408,7 @@ export default function DashboardPage() {
             transition={{ duration: 0.35, delay: 0.07 }}
           >
             <div
-              className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+              className="dashboard-dark-section overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
               style={{
                 background: "rgba(7,12,29,0.9)",
                 border: "1px solid rgba(99,102,241,0.10)",
@@ -1387,7 +1554,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.12 }}
-            className="rounded-2xl px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.14)] sm:px-5"
+            className="dashboard-dark-section rounded-2xl px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.14)] sm:px-5"
             style={{
               background: "rgba(7,12,29,0.9)",
               border: "1px solid rgba(99,102,241,0.12)",
