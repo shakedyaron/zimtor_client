@@ -16,6 +16,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 type Step = 1 | 2 | 3 | 4
+type BookedAppointmentService = { duration_minutes: number | null }
+type BookedAppointment = {
+  appointment_time: string
+  services?: BookedAppointmentService | BookedAppointmentService[] | null
+}
 
 const DEFAULT_OPENING_TIME = "09:00"
 const DEFAULT_CLOSING_TIME = "18:00"
@@ -28,7 +33,11 @@ function timeToMinutes(time: string) {
 }
 
 // Returns true when a slot has already passed (or is within bufferMinutes) on today's date.
-function isPastSlotForToday(slotTime: string, dateStr: string, bufferMinutes = 10) {
+function isPastSlotForToday(
+  slotTime: string,
+  dateStr: string,
+  bufferMinutes = 10
+) {
   if (dateStr !== todayDateString()) return false
   const slotMinutes = timeToMinutes(slotTime)
   if (slotMinutes === null) return false
@@ -56,6 +65,46 @@ function generateTimeSlots(
     )
   }
   return slots
+}
+
+function appointmentOverlaps(
+  newStartMinutes: number,
+  newDurationMinutes: number,
+  bookedAppointment: BookedAppointment
+) {
+  const existingStartMinutes = timeToMinutes(bookedAppointment.appointment_time)
+  const bookedService = Array.isArray(bookedAppointment.services)
+    ? bookedAppointment.services[0]
+    : bookedAppointment.services
+  const existingDurationMinutes = bookedService?.duration_minutes ?? 30
+
+  if (
+    existingStartMinutes === null ||
+    newDurationMinutes <= 0 ||
+    existingDurationMinutes <= 0
+  ) {
+    return false
+  }
+
+  const newEndMinutes = newStartMinutes + newDurationMinutes
+  const existingEndMinutes = existingStartMinutes + existingDurationMinutes
+
+  return (
+    existingStartMinutes < newEndMinutes && newStartMinutes < existingEndMinutes
+  )
+}
+
+function hasOverlappingAppointment(
+  slotTime: string,
+  serviceDurationMinutes: number,
+  bookedAppointments: BookedAppointment[]
+) {
+  const newStartMinutes = timeToMinutes(slotTime)
+  if (newStartMinutes === null) return true
+
+  return bookedAppointments.some((appointment) =>
+    appointmentOverlaps(newStartMinutes, serviceDurationMinutes, appointment)
+  )
 }
 
 function todayDateString() {
@@ -311,8 +360,11 @@ export default function BookingPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedDate, setSelectedDate] = useState(todayDateString())
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
-  const [bookedTimes, setBookedTimes] = useState<string[]>([])
+  const [bookedAppointments, setBookedAppointments] = useState<
+    BookedAppointment[]
+  >([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [refreshSlotsKey, setRefreshSlotsKey] = useState(0)
 
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
@@ -349,22 +401,22 @@ export default function BookingPage() {
   useEffect(() => {
     if (!business || !selectedService || !selectedDate) return
     if (!isBusinessOpenOnDate(business, selectedDate)) {
-      setBookedTimes([])
+      setBookedAppointments([])
       setLoadingSlots(false)
       return
     }
     setLoadingSlots(true)
     supabase
       .from("appointments")
-      .select("appointment_time")
+      .select("appointment_time, services(duration_minutes)")
       .eq("business_id", business.id)
       .eq("appointment_date", selectedDate)
       .neq("status", "cancelled")
       .then(({ data }) => {
-        setBookedTimes((data ?? []).map((a) => a.appointment_time.slice(0, 5)))
+        setBookedAppointments((data ?? []) as BookedAppointment[])
         setLoadingSlots(false)
       })
-  }, [business, selectedService, selectedDate])
+  }, [business, selectedService, selectedDate, refreshSlotsKey])
 
   useEffect(() => {
     if (!business || !selectedDate) return
@@ -406,6 +458,41 @@ export default function BookingPage() {
       setStep(2)
       return
     }
+    if (selectedDate < todayDateString()) {
+      setSubmitError("השעה הזו כבר עברה. בחר שעה אחרת.")
+      setSelectedTime(null)
+      setStep(2)
+      return
+    }
+    if (selectedDate === todayDateString()) {
+      const slotMins = timeToMinutes(selectedTime)
+      const now = new Date()
+      const nowMins = now.getHours() * 60 + now.getMinutes()
+      if (slotMins !== null && slotMins <= nowMins) {
+        setSubmitError("השעה הזו כבר עברה. בחר שעה אחרת.")
+        setSelectedTime(null)
+        setStep(2)
+        return
+      }
+    }
+    {
+      const openT = business.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME
+      const closeT = business.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME
+      const slotMins = timeToMinutes(selectedTime)
+      const openMins = timeToMinutes(openT)
+      const closeMins = timeToMinutes(closeT)
+      if (
+        slotMins === null ||
+        openMins === null ||
+        closeMins === null ||
+        slotMins < openMins ||
+        slotMins + selectedService.duration_minutes > closeMins
+      ) {
+        setSubmitError("השעה שנבחרה אינה בשעות הפעילות של העסק.")
+        setStep(2)
+        return
+      }
+    }
     if (!trimmedName) {
       setSubmitError("יש להזין שם מלא.")
       return
@@ -429,6 +516,39 @@ export default function BookingPage() {
 
     setSubmitting(true)
 
+    const { data: latestBookedAppointments, error: latestBookedError } =
+      await supabase
+        .from("appointments")
+        .select("appointment_time, services(duration_minutes)")
+        .eq("business_id", business.id)
+        .eq("appointment_date", selectedDate)
+        .neq("status", "cancelled")
+
+    if (latestBookedError) {
+      setSubmitError("שגיאה בבדיקת זמינות השעה. נסה שוב.")
+      setSubmitting(false)
+      return
+    }
+
+    const currentBookedAppointments = (latestBookedAppointments ??
+      []) as BookedAppointment[]
+
+    if (
+      hasOverlappingAppointment(
+        selectedTime,
+        selectedService.duration_minutes,
+        currentBookedAppointments
+      )
+    ) {
+      setSubmitError("השעה הזו כבר תפוסה. בחר שעה אחרת.")
+      setBookedAppointments(currentBookedAppointments)
+      setRefreshSlotsKey((prev) => prev + 1)
+      setSelectedTime(null)
+      setStep(2)
+      setSubmitting(false)
+      return
+    }
+
     const { error } = await supabase.from("appointments").insert({
       business_id: business.id,
       service_id: selectedService.id,
@@ -440,7 +560,14 @@ export default function BookingPage() {
     })
 
     if (error) {
-      setSubmitError("שגיאה בשמירת התור. נסה שוב.")
+      if (error.code === "23505") {
+        setSubmitError("השעה הזו כבר נתפסה. בחר שעה אחרת.")
+        setRefreshSlotsKey((prev) => prev + 1)
+        setSelectedTime(null)
+        setStep(2)
+      } else {
+        setSubmitError("שגיאה בשמירת התור. נסה שוב.")
+      }
     } else {
       setSubmitted(true)
       setStep(4)
@@ -466,6 +593,21 @@ export default function BookingPage() {
     if (!selectedTime) {
       setSubmitError("יש לבחור שעה לפני שממשיכים.")
       return
+    }
+    if (selectedDate < todayDateString()) {
+      setSubmitError("השעה הזו כבר עברה. בחר שעה אחרת.")
+      setSelectedTime(null)
+      return
+    }
+    if (selectedDate === todayDateString()) {
+      const slotMins = timeToMinutes(selectedTime)
+      const now = new Date()
+      const nowMins = now.getHours() * 60 + now.getMinutes()
+      if (slotMins !== null && slotMins <= nowMins) {
+        setSubmitError("השעה הזו כבר עברה. בחר שעה אחרת.")
+        setSelectedTime(null)
+        return
+      }
     }
     setStep(3)
   }
@@ -513,7 +655,16 @@ export default function BookingPage() {
       : []
   const availableSlots = isClosedDay
     ? []
-    : timeSlots.filter((t) => !bookedTimes.includes(t) && !isPastSlotForToday(t, selectedDate))
+    : timeSlots.filter(
+        (t) =>
+          selectedService &&
+          !hasOverlappingAppointment(
+            t,
+            selectedService.duration_minutes,
+            bookedAppointments
+          ) &&
+          !isPastSlotForToday(t, selectedDate)
+      )
   const businessInitial = business?.name?.trim().charAt(0) || "Z"
   const businessDescription =
     business?.description ||
@@ -544,7 +695,9 @@ export default function BookingPage() {
                 <h1 className="truncate font-heading text-lg font-bold text-white sm:text-xl">
                   {business?.name}
                 </h1>
-                <p className="text-xs font-semibold text-indigo-300">קביעת תור</p>
+                <p className="text-xs font-semibold text-indigo-300">
+                  קביעת תור
+                </p>
               </div>
             </div>
           </div>

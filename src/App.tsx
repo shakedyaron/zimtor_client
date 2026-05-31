@@ -5,6 +5,7 @@ import AuthPage from "@/pages/AuthPage"
 import AuthCallbackPage from "@/pages/AuthCallbackPage"
 import CreateBusinessPage from "@/pages/CreateBusinessPage"
 import DashboardPage from "@/pages/DashboardPage"
+import AppointmentsPage from "@/pages/AppointmentsPage"
 import BookingPage from "@/pages/BookingPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/appointments"
+          element={
+            <ProtectedRoute>
+              <AppointmentsPage />
             </ProtectedRoute>
           }
         />

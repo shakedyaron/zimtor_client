@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
@@ -7,11 +7,11 @@ import {
   LogOut,
   ExternalLink,
   Clock,
-  Phone,
   ChevronDown,
   ImageIcon,
   Loader2,
   UploadCloud,
+  Calendar,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
@@ -24,7 +24,6 @@ import type { Business, Service, Appointment } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 
 const DEFAULT_OPENING_TIME = "09:00"
 const DEFAULT_CLOSING_TIME = "18:00"
@@ -46,28 +45,10 @@ const weekDays = [
   { value: 6, label: "שבת" },
 ]
 
-const statusLabel: Record<string, string> = {
-  pending: "ממתין",
-  confirmed: "מאושר",
-  cancelled: "בוטל",
-}
-
-const statusVariant: Record<
-  string,
-  "default" | "success" | "destructive" | "warning"
-> = {
-  pending: "warning",
-  confirmed: "success",
-  cancelled: "destructive",
-}
-
-function formatDate(dateStr: string) {
-  const [year, month, day] = dateStr.split("-").map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString("he-IL", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  return hours * 60 + minutes
 }
 
 function formatTime(timeStr: string) {
@@ -115,6 +96,43 @@ function isUpcomingAppointment(appointment: Appointment) {
     ? appointmentDateTime.getTime() >= Date.now()
     : false
 }
+
+function appointmentService(
+  appointment: Appointment
+): { duration_minutes?: number | null; price?: number | null } | null {
+  const service = appointment.services
+  if (Array.isArray(service)) return service[0] ?? null
+  return service ?? null
+}
+
+function appointmentOverlaps(
+  newStartMinutes: number,
+  newDurationMinutes: number,
+  appointment: Appointment
+) {
+  const existingStartMinutes = timeToMinutes(
+    formatTime(appointment.appointment_time)
+  )
+  const existingDurationMinutes =
+    appointmentService(appointment)?.duration_minutes ?? 30
+
+  if (
+    existingStartMinutes === null ||
+    newDurationMinutes <= 0 ||
+    existingDurationMinutes <= 0
+  ) {
+    return false
+  }
+
+  const newEndMinutes = newStartMinutes + newDurationMinutes
+  const existingEndMinutes = existingStartMinutes + existingDurationMinutes
+
+  return (
+    existingStartMinutes < newEndMinutes && newStartMinutes < existingEndMinutes
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
@@ -200,6 +218,9 @@ export default function DashboardPage() {
     setBusinessLogoUrl(biz.logo_url ?? "")
     setBusinessCoverUrl(biz.cover_image_url ?? "")
 
+    const todayLocal = new Date()
+    const todayDateStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, "0")}-${String(todayLocal.getDate()).padStart(2, "0")}`
+
     const [{ data: svcs }, { data: apts }] = await Promise.all([
       supabase
         .from("services")
@@ -208,8 +229,10 @@ export default function DashboardPage() {
         .order("created_at"),
       supabase
         .from("appointments")
-        .select("*, services(name, duration_minutes)")
+        .select("*, services(name, duration_minutes, price)")
         .eq("business_id", biz.id)
+        .neq("status", "cancelled")
+        .gte("appointment_date", todayDateStr)
         .order("appointment_date", { ascending: true })
         .order("appointment_time", { ascending: true }),
     ])
@@ -274,20 +297,6 @@ export default function DashboardPage() {
       return
     }
     setServices((prev) => prev.filter((s) => s.id !== id))
-  }
-
-  async function handleCancelAppointment(id: string) {
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: "cancelled" })
-      .eq("id", id)
-    if (error) {
-      console.error("handleCancelAppointment: update failed", error)
-      return
-    }
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a))
-    )
   }
 
   function toggleWorkingDay(day: number) {
@@ -465,6 +474,65 @@ export default function DashboardPage() {
     navigate("/")
   }
 
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  }, [])
+
+  const upcomingAppointments = useMemo(
+    () => appointments.filter(isUpcomingAppointment),
+    [appointments]
+  )
+
+  const todaySummary = useMemo(() => {
+    const todayDate = new Date()
+    const todayActiveAppointments = appointments.filter(
+      (appointment) =>
+        appointment.appointment_date === todayStr &&
+        appointment.status !== "cancelled"
+    )
+    const expectedRevenue = todayActiveAppointments.reduce(
+      (total, appointment) => {
+        return total + (appointmentService(appointment)?.price ?? 0)
+      },
+      0
+    )
+    const openingMinutes =
+      timeToMinutes(openingTime) ?? timeToMinutes(DEFAULT_OPENING_TIME)!
+    const closingMinutes =
+      timeToMinutes(closingTime) ?? timeToMinutes(DEFAULT_CLOSING_TIME)!
+    const shortestServiceDuration =
+      services
+        .map((service) => service.duration_minutes)
+        .filter((duration) => Number.isFinite(duration) && duration > 0)
+        .sort((a, b) => a - b)[0] ?? 30
+    const isWorkingDay = workingDays.includes(todayDate.getDay())
+
+    let availableSlots = 0
+    if (
+      isWorkingDay &&
+      openingMinutes < closingMinutes &&
+      services.length > 0
+    ) {
+      for (
+        let slotStart = openingMinutes;
+        slotStart + shortestServiceDuration <= closingMinutes;
+        slotStart += shortestServiceDuration
+      ) {
+        const hasConflict = todayActiveAppointments.some((appointment) =>
+          appointmentOverlaps(slotStart, shortestServiceDuration, appointment)
+        )
+        if (!hasConflict) availableSlots += 1
+      }
+    }
+
+    return {
+      appointmentCount: todayActiveAppointments.length,
+      expectedRevenue,
+      availableSlots,
+    }
+  }, [appointments, closingTime, openingTime, services, todayStr, workingDays])
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -489,8 +557,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  const upcomingAppointments = appointments.filter(isUpcomingAppointment)
 
   const bookingUrl = `/${business?.slug}`
   const bookingDisplayUrl = `${new URL(window.location.origin).host}/${business?.slug ?? ""}`
@@ -956,7 +1022,7 @@ export default function DashboardPage() {
                       setAvailabilityError(null)
                       setAvailabilitySuccess(null)
                     }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base sm:text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm"
                     dir="ltr"
                   >
                     {TIME_OPTIONS.map((time) => (
@@ -975,7 +1041,7 @@ export default function DashboardPage() {
                       setAvailabilityError(null)
                       setAvailabilitySuccess(null)
                     }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base sm:text-sm text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm"
                     dir="ltr"
                   >
                     {TIME_OPTIONS.map((time) => (
@@ -1023,6 +1089,69 @@ export default function DashboardPage() {
             </motion.div>
           )}
         </motion.form>
+
+        {/* Today summary */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.06 }}
+          className="mb-4 overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:mb-5"
+          style={{
+            background: "rgba(7,12,29,0.9)",
+            border: "1px solid rgba(99,102,241,0.10)",
+          }}
+        >
+          <div
+            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4"
+            style={{ borderBottom: "1px solid rgba(99,102,241,0.08)" }}
+          >
+            <div>
+              <h2 className="font-heading text-base font-bold text-slate-50">
+                היום
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                תמונת מצב קצרה ליום העבודה
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/appointments")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-300/16 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-200 transition hover:border-indigo-300/28 hover:bg-indigo-500/14"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              פתח יומן תורים
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 divide-x divide-indigo-300/10 px-2 py-4 divide-x-reverse sm:px-4">
+            {[
+              {
+                label: "תורים היום",
+                value: todaySummary.appointmentCount,
+              },
+              {
+                label: "הכנסה צפויה",
+                value: `₪${todaySummary.expectedRevenue}`,
+              },
+              {
+                label: "תורים פנויים",
+                value: todaySummary.availableSlots,
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="min-w-0 px-2 text-center sm:px-4"
+              >
+                <p className="bg-linear-to-r from-indigo-300 to-violet-300 bg-clip-text font-heading text-2xl leading-none font-bold text-transparent sm:text-4xl">
+                  {stat.value}
+                </p>
+                <p className="mt-2 truncate text-[11px] font-semibold text-slate-400 sm:text-xs">
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Main grid */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
@@ -1174,97 +1303,34 @@ export default function DashboardPage() {
             </div>
           </motion.div>
 
-          {/* Appointments */}
+          {/* Full calendar link */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.12 }}
+            className="rounded-2xl px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.14)] sm:px-5"
+            style={{
+              background: "rgba(7,12,29,0.9)",
+              border: "1px solid rgba(99,102,241,0.12)",
+            }}
           >
-            <div
-              className="overflow-hidden rounded-2xl shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
-              style={{
-                background: "rgba(7,12,29,0.9)",
-                border: "1px solid rgba(99,102,241,0.10)",
-              }}
-            >
-              <div
-                className="flex items-center justify-between px-4 py-3.5 sm:px-5 sm:py-4"
-                style={{ borderBottom: "1px solid rgba(99,102,241,0.08)" }}
-              >
-                <h2 className="font-heading text-base font-bold text-slate-50">
-                  תורים קרובים
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-indigo-300">יומן מלא</p>
+                <h2 className="mt-1 font-heading text-base font-bold text-slate-50">
+                  פתח תצוגת לוח לימים הקרובים
                 </h2>
-                <span className="rounded-full bg-indigo-500/12 px-2 py-0.5 text-xs font-medium text-indigo-400">
-                  {upcomingAppointments.length}
-                </span>
+                <p className="mt-1 text-xs text-slate-400">
+                  הדשבורד מציג הצצה יומית. ניהול מלא נמצא ביומן התורים.
+                </p>
               </div>
-
-              <div
-                className="divide-y lg:max-h-[460px] lg:overflow-y-auto"
-                style={{ borderColor: "rgba(99,102,241,0.08)" }}
+              <button
+                onClick={() => navigate("/appointments")}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-950/30 transition hover:brightness-110"
               >
-                {upcomingAppointments.length === 0 ? (
-                  <p className="px-5 py-8 text-center text-sm text-slate-400">
-                    אין תורים קרובים.
-                  </p>
-                ) : (
-                  upcomingAppointments.map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="px-4 py-3.5 transition-colors hover:bg-white/3 sm:px-5"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-slate-100">
-                              {apt.customer_name}
-                            </span>
-                            <Badge
-                              variant={statusVariant[apt.status] ?? "default"}
-                              className="h-5 py-0 text-[10px]"
-                            >
-                              {statusLabel[apt.status] ?? apt.status}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1 text-xs leading-5 text-slate-400">
-                            <p className="font-semibold text-slate-300">
-                              {formatDate(apt.appointment_date)} ·{" "}
-                              {formatTime(apt.appointment_time)}
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                              <Phone className="h-2.5 w-2.5" />
-                              <span dir="ltr">{apt.customer_phone}</span>
-                            </div>
-                            {(
-                              apt as Appointment & {
-                                services?: { name: string }
-                              }
-                            ).services?.name && (
-                              <p className="font-medium text-slate-300">
-                                {
-                                  (
-                                    apt as Appointment & {
-                                      services?: { name: string }
-                                    }
-                                  ).services!.name
-                                }
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {apt.status === "pending" && (
-                          <button
-                            onClick={() => handleCancelAppointment(apt.id)}
-                            className="self-end rounded-lg border border-red-400/15 bg-red-500/8 px-2.5 py-1.5 text-[10px] font-semibold text-red-300 transition-colors hover:bg-destructive/10 hover:text-destructive sm:self-start"
-                          >
-                            בטל תור
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                <Calendar className="h-4 w-4" />
+                פתח יומן תורים
+              </button>
             </div>
           </motion.div>
         </div>
