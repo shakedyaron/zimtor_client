@@ -119,7 +119,7 @@ export default function AuthPage() {
             </span>
           </Link>
           <p className="mt-2 text-sm text-slate-500">
-            {mode === "login" ? "כניסה לחשבון" : "יצירת חשבון חדש"}
+            כניסה לבעל עסק
           </p>
         </div>
 
@@ -133,29 +133,6 @@ export default function AuthPage() {
             boxShadow: "0 0 40px rgba(99,102,241,0.07), 0 24px 48px rgba(0,0,0,0.38)",
           }}
         >
-          {/* Mode toggle */}
-          <div
-            className="mb-6 flex rounded-xl p-1"
-            style={{ background: "rgba(255,255,255,0.05)" }}
-          >
-            {(["login", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => {
-                  setMode(m)
-                  setError(null)
-                }}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all duration-200 ${
-                  mode === m
-                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {m === "login" ? "כניסה" : "הרשמה"}
-              </button>
-            ))}
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-400">אימייל</Label>
@@ -221,7 +198,10 @@ export default function AuthPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
+        <p className="mt-6 text-center text-xs text-slate-500">
+          אין לך חשבון? השאר פרטים בדף הבית ונחזור אליך.
+        </p>
+        <p className="mt-2 text-center text-xs text-slate-600">
           <Link to="/" className="transition hover:text-slate-400">
             חזרה לעמוד הבית
           </Link>

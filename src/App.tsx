@@ -6,6 +6,7 @@ import AuthCallbackPage from "@/pages/AuthCallbackPage"
 import CreateBusinessPage from "@/pages/CreateBusinessPage"
 import DashboardPage from "@/pages/DashboardPage"
 import AppointmentsPage from "@/pages/AppointmentsPage"
+import AppointmentHistoryPage from "@/pages/AppointmentHistoryPage"
 import BookingPage from "@/pages/BookingPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AppointmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/appointment-history"
+          element={
+            <ProtectedRoute>
+              <AppointmentHistoryPage />
             </ProtectedRoute>
           }
         />

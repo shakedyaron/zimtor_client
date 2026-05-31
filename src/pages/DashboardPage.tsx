@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import {
@@ -12,6 +12,7 @@ import {
   Loader2,
   UploadCloud,
   Calendar,
+  History,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
@@ -35,6 +36,8 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
 })
 
+type AppointmentStatus = "future" | "completed" | "cancelled" | "no_show"
+
 const weekDays = [
   { value: 0, label: "ראשון" },
   { value: 1, label: "שני" },
@@ -53,6 +56,17 @@ function timeToMinutes(time: string) {
 
 function formatTime(timeStr: string) {
   return timeStr.slice(0, 5)
+}
+
+function normalizeAppointmentStatus(status?: string | null): AppointmentStatus {
+  if (
+    status === "completed" ||
+    status === "cancelled" ||
+    status === "no_show"
+  ) {
+    return status
+  }
+  return "future"
 }
 
 function getBusinessWorkingDays(business: Business | null) {
@@ -90,7 +104,8 @@ function getAppointmentDateTime(appointment: Appointment) {
 }
 
 function isUpcomingAppointment(appointment: Appointment) {
-  if (appointment.status === "cancelled") return false
+  if (normalizeAppointmentStatus(appointment.status) !== "future")
+    return false
   const appointmentDateTime = getAppointmentDateTime(appointment)
   return appointmentDateTime
     ? appointmentDateTime.getTime() >= Date.now()
@@ -178,6 +193,38 @@ export default function DashboardPage() {
   const [showAvailabilitySettings, setShowAvailabilitySettings] =
     useState(false)
 
+  const appointmentsRef = useRef<Appointment[]>([])
+  appointmentsRef.current = appointments
+
+  async function runAutoComplete(apts: Appointment[]) {
+    const now = Date.now()
+    const toComplete = apts.filter((apt) => {
+      if (normalizeAppointmentStatus(apt.status) !== "future") return false
+      const start = getAppointmentDateTime(apt)
+      if (!start) return false
+      const svc = appointmentService(apt)
+      return start.getTime() + (svc?.duration_minutes ?? 30) * 60_000 < now
+    })
+    if (!toComplete.length) return
+    const ids = toComplete.map((a) => a.id)
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "completed" })
+      .in("id", ids)
+    if (error) return
+    setAppointments((prev) =>
+      prev.map((a) => (ids.includes(a.id) ? { ...a, status: "completed" } : a))
+    )
+  }
+
+  useEffect(() => {
+    const id = setInterval(
+      () => runAutoComplete(appointmentsRef.current),
+      60_000
+    )
+    return () => clearInterval(id)
+  }, [])
+
   useEffect(() => {
     if (!user) return
     loadData()
@@ -218,9 +265,6 @@ export default function DashboardPage() {
     setBusinessLogoUrl(biz.logo_url ?? "")
     setBusinessCoverUrl(biz.cover_image_url ?? "")
 
-    const todayLocal = new Date()
-    const todayDateStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, "0")}-${String(todayLocal.getDate()).padStart(2, "0")}`
-
     const [{ data: svcs }, { data: apts }] = await Promise.all([
       supabase
         .from("services")
@@ -231,15 +275,15 @@ export default function DashboardPage() {
         .from("appointments")
         .select("*, services(name, duration_minutes, price)")
         .eq("business_id", biz.id)
-        .neq("status", "cancelled")
-        .gte("appointment_date", todayDateStr)
         .order("appointment_date", { ascending: true })
         .order("appointment_time", { ascending: true }),
     ])
 
     setServices(svcs ?? [])
-    setAppointments(apts ?? [])
+    const freshApts = apts ?? []
+    setAppointments(freshApts)
     setLoading(false)
+    if (freshApts.length) runAutoComplete(freshApts)
   }
 
   async function handleAddService(e: React.FormEvent) {
@@ -484,15 +528,34 @@ export default function DashboardPage() {
     [appointments]
   )
 
+  // const statusKpis = useMemo(() => {
+  //   return appointments.reduce(
+  //     (counts, appointment) => {
+  //       const status = normalizeAppointmentStatus(appointment.status)
+  //       counts[status] += 1
+  //       return counts
+  //     },
+  //     {
+  //       completed: 0,
+  //       cancelled: 0,
+  //       no_show: 0,
+  //       upcoming: 0,
+  //     } satisfies Record<AppointmentStatus, number>
+  //   )
+  // }, [appointments])
+
   const todaySummary = useMemo(() => {
     const todayDate = new Date()
     const todayActiveAppointments = appointments.filter(
       (appointment) =>
         appointment.appointment_date === todayStr &&
-        appointment.status !== "cancelled"
+        normalizeAppointmentStatus(appointment.status) !== "cancelled"
     )
-    const expectedRevenue = todayActiveAppointments.reduce(
+    const completedRevenue = todayActiveAppointments.reduce(
       (total, appointment) => {
+        if (normalizeAppointmentStatus(appointment.status) !== "completed") {
+          return total
+        }
         return total + (appointmentService(appointment)?.price ?? 0)
       },
       0
@@ -528,7 +591,7 @@ export default function DashboardPage() {
 
     return {
       appointmentCount: todayActiveAppointments.length,
-      expectedRevenue,
+      completedRevenue,
       availableSlots,
     }
   }, [appointments, closingTime, openingTime, services, todayStr, workingDays])
@@ -655,6 +718,22 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.02 }}
+          className="mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-4"
+        >
+          <button
+            type="button"
+            onClick={() => navigate("/appointment-history")}
+            className="col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-300/12 bg-indigo-500/8 px-4 py-3 text-xs font-bold text-indigo-200 transition hover:border-indigo-300/24 hover:bg-indigo-500/12 sm:col-span-4"
+          >
+            <History className="h-4 w-4" />
+            פתח היסטוריית תורים
+          </button>
         </motion.div>
 
         <motion.form
@@ -1130,8 +1209,8 @@ export default function DashboardPage() {
                 value: todaySummary.appointmentCount,
               },
               {
-                label: "הכנסה צפויה",
-                value: `₪${todaySummary.expectedRevenue}`,
+                label: "הכנסה בפועל",
+                value: `₪${todaySummary.completedRevenue}`,
               },
               {
                 label: "תורים פנויים",

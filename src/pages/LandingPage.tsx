@@ -1,7 +1,9 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { Link } from "react-router-dom"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion"
 import { Link2, Scissors, Calendar, Clock, Smartphone } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { supabase } from "@/lib/supabase"
 
 const previewAppointments = [
   {
@@ -446,6 +448,248 @@ function DashboardMockup() {
   )
 }
 
+const BUSINESS_TYPES = [
+  "ספר / ספרית",
+  "מכון יופי",
+  "מניקיור / פדיקיור",
+  "קוסמטיקאי/ת",
+  "מאמן/ת אישי/ת",
+  "מרפאה קטנה",
+  "אחר",
+]
+
+const fieldStyle: React.CSSProperties = {
+  fontSize: "16px",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: "12px",
+  color: "white",
+  padding: "12px 16px",
+  width: "100%",
+  outline: "none",
+}
+
+function LeadModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [bizName, setBizName] = useState("")
+  const [bizType, setBizType] = useState("")
+  const [note, setNote] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    const cleanPhone = phone.replace(/[-\s]/g, "")
+    if (!cleanPhone) {
+      setError("יש להזין מספר טלפון.")
+      return
+    }
+    if (!/^\d+$/.test(cleanPhone)) {
+      setError("מספר טלפון חייב להכיל ספרות בלבד.")
+      return
+    }
+    if (!/^05\d{8}$/.test(cleanPhone)) {
+      setError(
+        "מספר טלפון לא תקין. יש להזין מספר נייד ישראלי (10 ספרות, מתחיל ב-05)."
+      )
+      return
+    }
+
+    setSubmitting(true)
+    const payload = {
+      full_name: name.trim(),
+      phone: cleanPhone,
+      business_name: bizName.trim(),
+      business_type: bizType || null,
+      note: note.trim() || null,
+    }
+    console.log("[leads] insert payload:", payload)
+    const { error: insertError } = await supabase.from("leads").insert(payload)
+    setSubmitting(false)
+
+    if (insertError) {
+      console.error("[leads] insert error:", insertError)
+      setError("שגיאה בשליחת הפרטים. נסה שוב מאוחר יותר.")
+      return
+    }
+    setSuccess(true)
+  }
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={onClose}
+      dir="rtl"
+    >
+      <motion.div
+        className="w-full max-w-md overflow-hidden"
+        style={{
+          borderRadius: "20px",
+          background: "rgba(8,13,30,0.98)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          backdropFilter: "blur(30px)",
+          boxShadow:
+            "0 0 60px rgba(99,102,241,0.15), 0 30px 70px rgba(0,0,0,0.65)",
+        }}
+        initial={{ opacity: 0, y: 32, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.22 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <h2 className="font-heading text-lg font-bold text-white">
+            קבלו הדגמה
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1 text-sm text-slate-400 transition hover:text-white"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            סגור
+          </button>
+        </div>
+
+        <div className="p-6">
+          {success ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="py-8 text-center"
+            >
+              <div
+                className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
+                style={{
+                  background: "rgba(99,102,241,0.12)",
+                  border: "1px solid rgba(99,102,241,0.30)",
+                }}
+              >
+                <svg
+                  className="h-6 w-6 text-indigo-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <p className="font-heading text-xl font-bold text-white">תודה!</p>
+              <p className="mt-2 text-sm text-slate-400">
+                קיבלנו את הפרטים, נחזור אליך בקרוב.
+              </p>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  שם מלא
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="ישראל ישראלי"
+                  style={fieldStyle}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  טלפון
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0501234567"
+                  dir="ltr"
+                  style={fieldStyle}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  שם העסק
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={bizName}
+                  onChange={(e) => setBizName(e.target.value)}
+                  placeholder='ספרות דוד'
+                  style={fieldStyle}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  סוג העסק
+                </label>
+                <select
+                  value={bizType}
+                  onChange={(e) => setBizType(e.target.value)}
+                  style={{ ...fieldStyle, appearance: "none" as const }}
+                >
+                  <option value="" style={{ background: "#0d1224" }}>
+                    בחר סוג עסק
+                  </option>
+                  {BUSINESS_TYPES.map((t) => (
+                    <option key={t} value={t} style={{ background: "#0d1224" }}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  הערה (אופציונלי)
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="ספר לנו קצת על העסק שלך..."
+                  rows={2}
+                  style={{ ...fieldStyle, resize: "none" as const }}
+                />
+              </div>
+
+              {error && (
+                <p
+                  className="rounded-xl px-3 py-2.5 text-sm text-red-400"
+                  style={{ background: "rgba(239,68,68,0.10)" }}
+                >
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 py-3 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 disabled:opacity-60"
+              >
+                {submitting ? "שולח..." : "שלח פרטים"}
+              </button>
+            </form>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 const features = [
   {
     icon: Calendar,
@@ -468,6 +712,9 @@ const features = [
 ]
 
 export default function LandingPage() {
+  const { user } = useAuth()
+  const [showModal, setShowModal] = useState(false)
+
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -550,9 +797,9 @@ export default function LandingPage() {
           <span className="bg-linear-to-r from-white to-slate-300 bg-clip-text font-heading text-2xl font-extrabold text-transparent">
             zimtor
           </span>
-          <Link to="/auth">
+          <Link to={user ? "/dashboard" : "/auth"}>
             <button className="rounded-xl border border-white/12 bg-white/6 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition hover:border-white/20 hover:bg-white/10">
-              כניסה / הרשמה
+              כניסה לבעל עסק
             </button>
           </Link>
         </nav>
@@ -600,11 +847,12 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.42 }}
             className="flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <Link to="/auth">
-              <button className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto">
-                התחילו בחינם
-              </button>
-            </Link>
+            <button
+              onClick={() => setShowModal(true)}
+              className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto"
+            >
+              קבלו הדגמה
+            </button>
             <Link to="/davidbarber">
               <button className="w-full rounded-xl border border-white/12 bg-white/6 px-8 py-3.5 text-base font-medium text-white backdrop-blur-sm transition hover:bg-white/10 sm:w-auto">
                 צפו בדוגמה
@@ -824,11 +1072,12 @@ export default function LandingPage() {
             הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם, בלי כרטיס
             אשראי.
           </p>
-          <Link to="/auth">
-            <button className="rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-10 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 hover:shadow-indigo-500/28">
-              התחילו בחינם עכשיו
-            </button>
-          </Link>
+          <button
+            onClick={() => setShowModal(true)}
+            className="rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-10 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 hover:shadow-indigo-500/28"
+          >
+            קבלו הדגמה
+          </button>
         </motion.div>
       </section>
 
@@ -848,6 +1097,10 @@ export default function LandingPage() {
           © 2026 · ניהול תורים לעסקים
         </span>
       </footer>
+
+      <AnimatePresence>
+        {showModal && <LeadModal onClose={() => setShowModal(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

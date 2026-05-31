@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   ArrowRight,
   CalendarDays,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Clock,
+  UserX,
+  XCircle,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
@@ -25,6 +28,7 @@ type CalendarDay = {
 }
 
 type CalendarViewMode = "day" | "threeDays" | "week"
+type AppointmentStatus = "future" | "completed" | "cancelled" | "no_show"
 
 type CalendarEventLayout = {
   column: number
@@ -52,6 +56,39 @@ const VIEW_MODE_OPTIONS: {
   { value: "threeDays", label: "3 ימים", days: 3 },
   { value: "week", label: "שבוע", days: 7 },
 ]
+
+const STATUS_META: Record<
+  AppointmentStatus,
+  { label: string; badgeClass: string }
+> = {
+  future: {
+    label: "עתידי",
+    badgeClass: "bg-violet-100 text-violet-700 border-violet-200",
+  },
+  completed: {
+    label: "בוצע",
+    badgeClass: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  cancelled: {
+    label: "בוטל",
+    badgeClass: "bg-rose-100 text-rose-700 border-rose-200",
+  },
+  no_show: {
+    label: "לא הגיע",
+    badgeClass: "bg-orange-100 text-orange-700 border-orange-200",
+  },
+}
+
+function normalizeAppointmentStatus(status?: string | null): AppointmentStatus {
+  if (
+    status === "completed" ||
+    status === "cancelled" ||
+    status === "no_show"
+  ) {
+    return status
+  }
+  return "future"
+}
 
 const SERVICE_COLORS = [
   {
@@ -646,11 +683,11 @@ function MobileTimeline({
 function AppointmentDetailsSheet({
   appointment,
   onClose,
-  onCancel,
+  onStatusChange,
 }: {
   appointment: AppointmentWithService | null
   onClose: () => void
-  onCancel: (id: string) => void
+  onStatusChange: (id: string, status: AppointmentStatus) => void
 }) {
   if (!appointment) return null
 
@@ -658,6 +695,8 @@ function AppointmentDetailsSheet({
   const duration = appointment.services?.duration_minutes ?? 30
   const end = start + duration
   const price = appointment.services?.price
+  const status = normalizeAppointmentStatus(appointment.status)
+  const statusMeta = STATUS_META[status]
 
   return (
     <AnimatePresence>
@@ -708,7 +747,7 @@ function AppointmentDetailsSheet({
                 label: "מחיר",
                 value: price != null ? `₪${price}` : "לא הוגדר",
               },
-              { label: "סטטוס", value: appointment.status },
+              { label: "סטטוס", value: statusMeta.label },
             ].map((item) => (
               <div
                 key={item.label}
@@ -725,18 +764,34 @@ function AppointmentDetailsSheet({
             ))}
           </div>
 
-          {appointment.status === "pending" && (
+          <div className="mt-4 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => {
-                onCancel(appointment.id)
-                onClose()
-              }}
-              className="mt-4 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600 transition hover:bg-rose-100"
+              onClick={() => onStatusChange(appointment.id, "no_show")}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-3.5 text-sm font-bold text-orange-700 transition hover:bg-orange-100"
             >
-              בטל תור
+              <UserX className="h-4 w-4" />
+              לא הגיע
             </button>
-          )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onStatusChange(appointment.id, "completed")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"
+              >
+                <CheckCircle className="h-4 w-4" />
+                בוצע
+              </button>
+              <button
+                type="button"
+                onClick={() => onStatusChange(appointment.id, "cancelled")}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-100"
+              >
+                <XCircle className="h-4 w-4" />
+                ביטל
+              </button>
+            </div>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -769,12 +824,45 @@ export default function AppointmentsPage() {
     return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
   })
 
+  const appointmentsRef = useRef<AppointmentWithService[]>([])
+  appointmentsRef.current = appointments
+
+  async function runAutoComplete(apts: AppointmentWithService[]) {
+    const now = Date.now()
+    const toComplete = apts.filter((apt) => {
+      if (normalizeAppointmentStatus(apt.status) !== "future") return false
+      const start = timeToMinutes(formatTime(apt.appointment_time))
+      if (start === null) return false
+      const duration = apt.services?.duration_minutes ?? 30
+      const [year, month, day] = apt.appointment_date.split("-").map(Number)
+      const endDate = new Date(
+        year,
+        month - 1,
+        day,
+        Math.floor((start + duration) / 60),
+        (start + duration) % 60
+      )
+      return endDate.getTime() < now
+    })
+    if (!toComplete.length) return
+    const ids = toComplete.map((a) => a.id)
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "completed" })
+      .in("id", ids)
+    if (error) return
+    setAppointments((prev) =>
+      prev.map((a) => (ids.includes(a.id) ? { ...a, status: "completed" } : a))
+    )
+  }
+
   useEffect(() => {
     const id = setInterval(() => {
       const now = new Date()
       setNowStr(
         `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
       )
+      runAutoComplete(appointmentsRef.current)
     }, 60_000)
     return () => clearInterval(id)
   }, [])
@@ -817,8 +905,10 @@ export default function AppointmentsPage() {
         .order("appointment_time", { ascending: true })
 
       if (cancelled) return
-      setAppointments((apts as AppointmentWithService[]) ?? [])
+      const freshApts = (apts as AppointmentWithService[]) ?? []
+      setAppointments(freshApts)
       setLoading(false)
+      if (freshApts.length) runAutoComplete(freshApts)
     }
 
     load()
@@ -827,15 +917,26 @@ export default function AppointmentsPage() {
     }
   }, [user, dayKeys, rangeEndKey, navigate])
 
-  async function handleCancel(id: string) {
-    await supabase
+  async function handleStatusChange(id: string, status: AppointmentStatus) {
+    const { error } = await supabase
       .from("appointments")
-      .update({ status: "cancelled" })
+      .update({ status })
       .eq("id", id)
+    if (error) return
     setAppointments((prev) =>
-      prev.filter((appointment) => appointment.id !== id)
+      status === "cancelled"
+        ? prev.filter((appointment) => appointment.id !== id)
+        : prev.map((appointment) =>
+            appointment.id === id ? { ...appointment, status } : appointment
+          )
     )
-    setSelectedAppointment((current) => (current?.id === id ? null : current))
+    setSelectedAppointment((current) =>
+      current?.id === id
+        ? status === "cancelled"
+          ? null
+          : { ...current, status }
+        : current
+    )
   }
 
   function moveRange(direction: -1 | 1) {
@@ -1023,7 +1124,7 @@ export default function AppointmentsPage() {
         <AppointmentDetailsSheet
           appointment={selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
-          onCancel={handleCancel}
+          onStatusChange={handleStatusChange}
         />
       </main>
     </div>

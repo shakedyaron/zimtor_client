@@ -556,7 +556,7 @@ export default function BookingPage() {
       customer_phone: trimmedPhone,
       appointment_date: selectedDate,
       appointment_time: selectedTime + ":00",
-      status: "pending",
+      status: "future",
     })
 
     if (error) {
@@ -759,7 +759,7 @@ export default function BookingPage() {
                 )}
                 {business.whatsapp_url && (
                   <a
-                    href={business.whatsapp_url}
+                    href={`https://wa.me/${business.whatsapp_url}`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-indigo-300/20 hover:text-white"
