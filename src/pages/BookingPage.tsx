@@ -5,8 +5,10 @@ import {
   Clock,
   CheckCircle,
   Check,
+  CalendarPlus,
   Phone,
   Camera,
+  ExternalLink,
   MessageCircle,
   MapPin,
 } from "lucide-react"
@@ -126,6 +128,49 @@ function formatDateHebrew(dateStr: string) {
     day: "numeric",
     month: "long",
   })
+}
+
+function formatCalendarDateTime(dateStr: string, timeStr: string) {
+  const [year, month, day] = dateStr.split("-").map(Number)
+  const [hours, minutes] = timeStr.slice(0, 5).split(":").map(Number)
+  return `${year}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}T${String(hours).padStart(2, "0")}${String(minutes).padStart(2, "0")}00`
+}
+
+function createCalendarDataHref({
+  businessName,
+  serviceName,
+  date,
+  time,
+  durationMinutes,
+  manageLink,
+}: {
+  businessName: string
+  serviceName: string
+  date: string
+  time: string
+  durationMinutes: number
+  manageLink: string
+}) {
+  const start = formatCalendarDateTime(date, time)
+  const startMinutes = timeToMinutes(time) ?? 0
+  const endMinutes = startMinutes + durationMinutes
+  const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`
+  const end = formatCalendarDateTime(date, endTime)
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Zimtor//Appointment//HE",
+    "BEGIN:VEVENT",
+    `UID:${crypto.randomUUID()}@zimtor`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${serviceName} - ${businessName}`,
+    `DESCRIPTION:לצפייה או ביטול התור: ${manageLink}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n")
+
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`
 }
 
 function getBusinessWorkingDays(business: Business | null) {
@@ -392,6 +437,7 @@ export default function BookingPage() {
   const [customerPhone, setCustomerPhone] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [manageToken, setManageToken] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -571,6 +617,7 @@ export default function BookingPage() {
       return
     }
 
+    const appointmentManageToken = crypto.randomUUID()
     const { error } = await supabase.from("appointments").insert({
       business_id: business.id,
       service_id: selectedService.id,
@@ -578,7 +625,8 @@ export default function BookingPage() {
       customer_phone: trimmedPhone,
       appointment_date: selectedDate,
       appointment_time: selectedTime + ":00",
-      status: "future",
+      status: "upcoming",
+      manage_token: appointmentManageToken,
     })
 
     if (error) {
@@ -591,6 +639,7 @@ export default function BookingPage() {
         setSubmitError("שגיאה בשמירת התור. נסה שוב.")
       }
     } else {
+      setManageToken(appointmentManageToken)
       setSubmitted(true)
       setStep(4)
     }
@@ -811,6 +860,29 @@ export default function BookingPage() {
       ? "rounded-xl px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50"
       : "rounded-xl px-4 py-2 text-sm font-semibold text-indigo-400 transition hover:bg-indigo-500/8",
   }
+  const manageLink = manageToken
+    ? `${window.location.origin}/manage/${manageToken}`
+    : ""
+  const appointmentServiceName = selectedService?.name ?? ""
+  const appointmentBusinessName = business?.name ?? ""
+  const appointmentTime = selectedTime ?? ""
+  const whatsappMessage = `היי, זה פרטי התור שלי:
+עסק: ${appointmentBusinessName}
+שירות: ${appointmentServiceName}
+תאריך: ${formatDateHebrew(selectedDate)}
+שעה: ${appointmentTime}
+לצפייה או ביטול התור: ${manageLink}`
+  const calendarHref =
+    manageLink && selectedService && appointmentTime
+      ? createCalendarDataHref({
+          businessName: appointmentBusinessName,
+          serviceName: appointmentServiceName,
+          date: selectedDate,
+          time: appointmentTime,
+          durationMinutes: selectedService.duration_minutes,
+          manageLink,
+        })
+      : ""
 
   return (
     <div className={`min-h-screen ${th.pageBg}`} dir="rtl">
@@ -1218,7 +1290,7 @@ export default function BookingPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25, duration: 0.4 }}
                 >
-                  <h2 className={th.confirmHeading}>התור נקבע!</h2>
+                  <h2 className={th.confirmHeading}>התור נקבע בהצלחה</h2>
                   <p className={th.confirmText}>
                     {customerName}, התור שלך אצל{" "}
                     <span className={th.confirmName}>{business?.name}</span>{" "}
@@ -1226,6 +1298,10 @@ export default function BookingPage() {
                   </p>
 
                   <div className={th.confirmBox}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className={th.infoLbl}>עסק</span>
+                      <span className={th.infoVal}>{business?.name}</span>
+                    </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className={th.infoLbl}>שירות</span>
                       <span className={th.infoVal}>
@@ -1242,25 +1318,46 @@ export default function BookingPage() {
                       <span className={th.infoLbl}>שעה</span>
                       <span className={th.infoVal}>{selectedTime}</span>
                     </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className={th.infoLbl}>שם</span>
+                      <span className={th.infoVal}>{customerName}</span>
+                    </div>
                   </div>
 
                   <p className={th.confirmNote}>
                     מומלץ לשמור את פרטי התור או לשלוח לעצמך ב-WhatsApp.
                   </p>
 
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
-                      `תזכורת לתור שלי 📅\nעסק: ${business?.name}\nשירות: ${selectedService?.name}\nתאריך: ${formatDateHebrew(selectedDate)}\nשעה: ${selectedTime}\nשם: ${customerName}`
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mb-3 inline-flex items-center gap-2 rounded-xl bg-green-500/15 px-5 py-2.5 text-sm font-semibold text-green-400 ring-1 ring-green-500/20 transition hover:bg-green-500/25"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    שלח לעצמי ב-WhatsApp
-                  </a>
-
-                  <br />
+                  {manageLink && (
+                    <div className="mx-auto mb-4 grid max-w-sm gap-2">
+                      <a
+                        href={manageLink}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/12 transition hover:opacity-90"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        צפה / בטל את התור
+                      </a>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500/15 px-5 py-3 text-sm font-semibold text-green-400 ring-1 ring-green-500/20 transition hover:bg-green-500/25"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        שלח לעצמי ב-WhatsApp
+                      </a>
+                      {calendarHref && (
+                        <a
+                          href={calendarHref}
+                          download="zimtor-appointment.ics"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-300/16 bg-indigo-500/10 px-5 py-3 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-500/16"
+                        >
+                          <CalendarPlus className="h-4 w-4" />
+                          הוסף ליומן
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   <button
                     onClick={() => {
@@ -1269,6 +1366,7 @@ export default function BookingPage() {
                       setSelectedTime(null)
                       setCustomerName("")
                       setCustomerPhone("")
+                      setManageToken(null)
                       setSubmitted(false)
                     }}
                     className={th.bookAgainBtn}

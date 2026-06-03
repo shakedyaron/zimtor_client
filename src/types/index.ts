@@ -35,6 +35,7 @@ export interface Appointment {
   appointment_date: string
   appointment_time: string
   status: string
+  manage_token?: string | null
   created_at: string
   services?: Service
 }

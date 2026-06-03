@@ -7,6 +7,7 @@ import CreateBusinessPage from "@/pages/CreateBusinessPage"
 import DashboardPage from "@/pages/DashboardPage"
 import AppointmentsPage from "@/pages/AppointmentsPage"
 import AppointmentHistoryPage from "@/pages/AppointmentHistoryPage"
+import AppointmentManagePage from "@/pages/AppointmentManagePage"
 import BookingPage from "@/pages/BookingPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/manage/:token" element={<AppointmentManagePage />} />
         <Route path="/:businessSlug" element={<BookingPage />} />
       </Routes>
     </BrowserRouter>

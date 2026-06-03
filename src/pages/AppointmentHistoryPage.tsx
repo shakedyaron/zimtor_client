@@ -64,12 +64,28 @@ function normalizeAppointmentStatus(status?: string | null): AppointmentStatus {
   return "future"
 }
 
-function localDateStr(date: Date) {
+function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-function addDays(date: Date, days: number) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days)
+function getTodayRange() {
+  const d = formatLocalDate(new Date())
+  return { start: d, end: d }
+}
+
+function getCurrentWeekRange() {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0 = Sunday
+  const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - dayOfWeek)
+  const saturday = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 6)
+  return { start: formatLocalDate(sunday), end: formatLocalDate(saturday) }
+}
+
+function getCurrentMonthRange() {
+  const today = new Date()
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  return { start: formatLocalDate(firstDay), end: formatLocalDate(lastDay) }
 }
 
 function formatHistoryDate(dateStr: string) {
@@ -82,28 +98,16 @@ function resolveDateRange(
   customStart: string,
   customEnd: string
 ) {
-  const today = new Date()
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-
   if (filter === "custom") {
+    const fallback = formatLocalDate(new Date())
     return {
-      start: customStart || localDateStr(start),
-      end: customEnd || customStart || localDateStr(start),
+      start: customStart || fallback,
+      end: customEnd || customStart || fallback,
     }
   }
-
-  if (filter === "week") {
-    return { start: localDateStr(start), end: localDateStr(addDays(start, 6)) }
-  }
-
-  if (filter === "month") {
-    return {
-      start: localDateStr(start),
-      end: localDateStr(new Date(start.getFullYear(), start.getMonth() + 1, 0)),
-    }
-  }
-
-  return { start: localDateStr(start), end: localDateStr(start) }
+  if (filter === "week") return getCurrentWeekRange()
+  if (filter === "month") return getCurrentMonthRange()
+  return getTodayRange()
 }
 
 export default function AppointmentHistoryPage() {
@@ -114,8 +118,8 @@ export default function AppointmentHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [dateRangeFilter, setDateRangeFilter] =
     useState<DateRangeFilter>("month")
-  const [customStart, setCustomStart] = useState(localDateStr(new Date()))
-  const [customEnd, setCustomEnd] = useState(localDateStr(new Date()))
+  const [customStart, setCustomStart] = useState(formatLocalDate(new Date()))
+  const [customEnd, setCustomEnd] = useState(formatLocalDate(new Date()))
 
   const appointmentsRef = useRef<AppointmentWithService[]>([])
   appointmentsRef.current = appointments
@@ -183,6 +187,14 @@ export default function AppointmentHistoryPage() {
         return
       }
 
+      if (import.meta.env.DEV) {
+        console.log("history date range", {
+          filter: dateRangeFilter,
+          startDate: dateRange.start,
+          endDate: dateRange.end,
+        })
+      }
+
       const { data } = await supabase
         .from("appointments")
         .select("*, services(name, price, duration_minutes)")
@@ -202,7 +214,7 @@ export default function AppointmentHistoryPage() {
     return () => {
       ignore = true
     }
-  }, [dateRange.end, dateRange.start, navigate, user])
+  }, [dateRange.end, dateRange.start, dateRangeFilter, navigate, user])
 
   const filteredAppointments = useMemo(() => {
     if (statusFilter === "all") return appointments

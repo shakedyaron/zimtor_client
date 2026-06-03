@@ -630,7 +630,7 @@ function LeadModal({ onClose }: { onClose: () => void }) {
                   required
                   value={bizName}
                   onChange={(e) => setBizName(e.target.value)}
-                  placeholder='ספרות דוד'
+                  placeholder="ספרות דוד"
                   style={fieldStyle}
                 />
               </div>
@@ -849,11 +849,11 @@ export default function LandingPage() {
           >
             <button
               onClick={() => setShowModal(true)}
-              className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto"
+              className="w-11/12 rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto"
             >
               קבלו הדגמה
             </button>
-            <Link to="/davidbarber">
+            <Link to="/davidbarber" className="w-11/12 md:w-auto">
               <button className="w-full rounded-xl border border-white/12 bg-white/6 px-8 py-3.5 text-base font-medium text-white backdrop-blur-sm transition hover:bg-white/10 sm:w-auto">
                 צפו בדוגמה
               </button>
