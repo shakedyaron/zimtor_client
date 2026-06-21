@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/AuthContext"
+import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -11,6 +12,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -19,38 +21,70 @@ export default function AuthPage() {
     if (!loading && user) navigate("/dashboard")
   }, [user, loading, navigate])
 
+  function switchMode(next: "login" | "signup") {
+    setMode(next)
+    setError(null)
+    setSuccessMsg(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSuccessMsg(null)
+
+    if (!email.trim()) {
+      setError("יש להזין כתובת מייל.")
+      return
+    }
+    if (password.length < 6) {
+      setError("הסיסמה חייבת להכיל לפחות 6 תווים.")
+      return
+    }
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("הסיסמאות אינן תואמות.")
+      return
+    }
+
     setSubmitting(true)
 
     if (mode === "login") {
-      const { error } = await signIn(email, password)
-      if (error) {
-        if (error.message.includes("Email not confirmed")) {
+      const { user: signedInUser, error: loginError } = await signIn(email, password)
+      if (loginError) {
+        if (loginError.message.includes("Email not confirmed")) {
           setError("יש לאמת את כתובת המייל לפני הכניסה. בדוק את תיבת הדואר שלך.")
-        } else if (error.message.includes("Invalid login credentials")) {
+        } else if (loginError.message.includes("Invalid login credentials")) {
           setError("אימייל או סיסמה שגויים. נסה שוב.")
         } else {
           setError("שגיאה בכניסה. נסה שוב.")
         }
+      } else if (signedInUser) {
+        const { data: biz } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("owner_id", signedInUser.id)
+          .maybeSingle()
+        navigate(biz ? "/dashboard" : "/onboarding", { replace: true })
       } else {
-        navigate("/dashboard")
+        navigate("/dashboard", { replace: true })
       }
     } else {
-      const { error } = await signUp(email, password)
-      if (error) {
-        if (error.message.includes("already registered") || error.message.includes("already been registered")) {
+      const { error: signupError } = await signUp(email, password)
+      if (signupError) {
+        if (
+          signupError.message.includes("already registered") ||
+          signupError.message.includes("already been registered")
+        ) {
           setError("כתובת מייל זו כבר רשומה. נסה להתחבר.")
-        } else if (error.message.includes("Password should be at least")) {
+        } else if (signupError.message.includes("Password should be at least")) {
           setError("הסיסמה חייבת להכיל לפחות 6 תווים.")
         } else {
           setError("שגיאה בהרשמה. נסה שוב.")
         }
       } else {
-        setSuccessMsg("נרשמת בהצלחה! בדוק את המייל שלך לאימות, ואז התחבר.")
+        setSuccessMsg("נרשמת בהצלחה! בדוק את המייל שלך לאימות החשבון.")
         setMode("login")
+        setPassword("")
+        setConfirmPassword("")
       }
     }
 
@@ -119,7 +153,7 @@ export default function AuthPage() {
             </span>
           </Link>
           <p className="mt-2 text-sm text-slate-500">
-            כניסה לבעל עסק
+            {mode === "login" ? "כניסה לבעל עסק" : "הרשמה לבעל עסק"}
           </p>
         </div>
 
@@ -133,6 +167,38 @@ export default function AuthPage() {
             boxShadow: "0 0 40px rgba(99,102,241,0.07), 0 24px 48px rgba(0,0,0,0.38)",
           }}
         >
+          {/* Mode tabs */}
+          <div
+            className="mb-6 flex overflow-hidden rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => switchMode("login")}
+              className={`flex-1 py-2.5 text-sm font-bold transition ${
+                mode === "login"
+                  ? "bg-indigo-500/20 text-indigo-200"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              כניסה
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("signup")}
+              className={`flex-1 py-2.5 text-sm font-bold transition ${
+                mode === "signup"
+                  ? "bg-indigo-500/20 text-indigo-200"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              הרשמה
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-400">אימייל</Label>
@@ -158,6 +224,22 @@ export default function AuthPage() {
                 dir="ltr"
               />
             </div>
+
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-400">
+                  אימות סיסמה
+                </Label>
+                <Input
+                  type="password"
+                  placeholder="הזן שוב את הסיסמה"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  dir="ltr"
+                />
+              </div>
+            )}
 
             <AnimatePresence mode="wait">
               {error && (
@@ -199,7 +281,29 @@ export default function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          אין לך חשבון? השאר פרטים בדף הבית ונחזור אליך.
+          {mode === "login" ? (
+            <>
+              אין לך חשבון?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("signup")}
+                className="font-semibold text-indigo-400 transition hover:text-indigo-300"
+              >
+                הרשמה בחינם
+              </button>
+            </>
+          ) : (
+            <>
+              כבר יש לך חשבון?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className="font-semibold text-indigo-400 transition hover:text-indigo-300"
+              >
+                כניסה
+              </button>
+            </>
+          )}
         </p>
         <p className="mt-2 text-center text-xs text-slate-600">
           <Link to="/" className="transition hover:text-slate-400">

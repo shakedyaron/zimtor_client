@@ -120,6 +120,13 @@ function appointmentService(
   return service ?? null
 }
 
+function appointmentServicePrice(appointment: Appointment) {
+  const price = appointmentService(appointment)?.price
+  if (price == null) return 0
+  const numericPrice = Number(price)
+  return Number.isFinite(numericPrice) ? numericPrice : 0
+}
+
 function appointmentOverlaps(
   newStartMinutes: number,
   newDurationMinutes: number,
@@ -250,7 +257,7 @@ export default function DashboardPage() {
     }
 
     if (!biz) {
-      navigate("/create-business")
+      navigate("/onboarding")
       return
     }
 
@@ -295,22 +302,23 @@ export default function DashboardPage() {
     setAddServiceError(null)
     const trimmedName = newServiceName.trim()
     const duration = Number(newServiceDuration)
-    const price = newServicePrice.trim() ? Number(newServicePrice) : null
+    const trimmedPrice = newServicePrice.trim()
+    const price = Number(trimmedPrice)
 
     if (!trimmedName) {
-      setAddServiceError("יש להזין שם שירות.")
-      return
-    }
-    if (!newServiceDuration.trim()) {
-      setAddServiceError("יש להזין משך שירות.")
+      setAddServiceError("שם השירות חובה")
       return
     }
     if (!Number.isFinite(duration) || duration <= 0) {
-      setAddServiceError("משך השירות חייב להיות מספר חיובי.")
+      setAddServiceError("משך השירות חייב להיות גדול מ-0")
       return
     }
-    if (price !== null && (!Number.isFinite(price) || price <= 0)) {
-      setAddServiceError("מחיר השירות חייב להיות מספר חיובי.")
+    if (!trimmedPrice) {
+      setAddServiceError("מחיר השירות חובה")
+      return
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      setAddServiceError("מחיר השירות חייב להיות גדול מ-0")
       return
     }
 
@@ -573,15 +581,12 @@ export default function DashboardPage() {
         appointment.appointment_date === todayStr &&
         normalizeAppointmentStatus(appointment.status) !== "cancelled"
     )
-    const completedRevenue = todayActiveAppointments.reduce(
-      (total, appointment) => {
-        if (normalizeAppointmentStatus(appointment.status) !== "completed") {
-          return total
-        }
-        return total + (appointmentService(appointment)?.price ?? 0)
-      },
-      0
-    )
+    const completedRevenue = appointments.reduce((total, appointment) => {
+      if (normalizeAppointmentStatus(appointment.status) !== "completed") {
+        return total
+      }
+      return total + appointmentServicePrice(appointment)
+    }, 0)
     const openingMinutes =
       timeToMinutes(openingTime) ?? timeToMinutes(DEFAULT_OPENING_TIME)!
     const closingMinutes =
@@ -1473,7 +1478,8 @@ export default function DashboardPage() {
                         placeholder="50"
                         value={newServicePrice}
                         onChange={(e) => setNewServicePrice(e.target.value)}
-                        min={0}
+                        min={1}
+                        required
                         dir="ltr"
                         className="h-8 text-base sm:text-sm"
                       />

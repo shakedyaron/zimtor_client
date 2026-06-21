@@ -61,7 +61,7 @@ export default function AuthCallbackPage() {
         if (businessError) throw businessError
         if (cancelled) return
 
-        navigate(business ? "/dashboard" : "/create-business", {
+        navigate(business ? "/dashboard" : "/onboarding", {
           replace: true,
         })
       } catch (err) {

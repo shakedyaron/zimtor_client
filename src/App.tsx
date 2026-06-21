@@ -5,6 +5,7 @@ import AuthPage from "@/pages/AuthPage"
 import AuthCallbackPage from "@/pages/AuthCallbackPage"
 import CreateBusinessPage from "@/pages/CreateBusinessPage"
 import DashboardPage from "@/pages/DashboardPage"
+import OnboardingPage from "@/pages/OnboardingPage"
 import AppointmentsPage from "@/pages/AppointmentsPage"
 import AppointmentHistoryPage from "@/pages/AppointmentHistoryPage"
 import AppointmentManagePage from "@/pages/AppointmentManagePage"
@@ -30,6 +31,14 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/create-business"
           element={
