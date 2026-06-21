@@ -825,7 +825,9 @@ export default function AppointmentsPage() {
   })
 
   const appointmentsRef = useRef<AppointmentWithService[]>([])
-  appointmentsRef.current = appointments
+  useEffect(() => {
+    appointmentsRef.current = appointments
+  })
 
   async function runAutoComplete(apts: AppointmentWithService[]) {
     const now = Date.now()

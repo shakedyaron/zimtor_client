@@ -265,10 +265,11 @@ function CalendarDatePicker({
   const [visibleMonth, setVisibleMonth] = useState(() =>
     dateStringToLocalDate(selectedDate)
   )
-
-  useEffect(() => {
+  const [prevCalendarDate, setPrevCalendarDate] = useState(selectedDate)
+  if (prevCalendarDate !== selectedDate) {
+    setPrevCalendarDate(selectedDate)
     setVisibleMonth(dateStringToLocalDate(selectedDate))
-  }, [selectedDate])
+  }
 
   const selected = dateStringToLocalDate(selectedDate)
   const monthStart = new Date(
@@ -440,6 +441,21 @@ export default function BookingPage() {
   const [manageToken, setManageToken] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  const [prevBizId, setPrevBizId] = useState(business?.id)
+  const [prevDateForCheck, setPrevDateForCheck] = useState(selectedDate)
+  if (prevBizId !== business?.id || prevDateForCheck !== selectedDate) {
+    setPrevBizId(business?.id)
+    setPrevDateForCheck(selectedDate)
+    if (business && selectedDate) {
+      const sel = dateStringToLocalDate(selectedDate)
+      if (!isSelectableBookingDate(business, sel)) {
+        setSelectedDate(findNextSelectableBookingDate(business))
+        setSelectedTime(null)
+        setSubmitError(null)
+      }
+    }
+  }
+
   useEffect(() => {
     if (!businessSlug) return
     supabase
@@ -468,33 +484,27 @@ export default function BookingPage() {
 
   useEffect(() => {
     if (!business || !selectedService || !selectedDate) return
-    if (!isBusinessOpenOnDate(business, selectedDate)) {
-      setBookedAppointments([])
-      setLoadingSlots(false)
-      return
-    }
-    setLoadingSlots(true)
-    supabase
-      .from("appointments")
-      .select("appointment_time, services(duration_minutes)")
-      .eq("business_id", business.id)
-      .eq("appointment_date", selectedDate)
-      .neq("status", "cancelled")
-      .then(({ data }) => {
-        setBookedAppointments((data ?? []) as BookedAppointment[])
+    const biz = business
+    const date = selectedDate
+    async function fetchSlots() {
+      if (!isBusinessOpenOnDate(biz, date)) {
+        setBookedAppointments([])
         setLoadingSlots(false)
-      })
+        return
+      }
+      setLoadingSlots(true)
+      const { data } = await supabase
+        .from("appointments")
+        .select("appointment_time, services(duration_minutes)")
+        .eq("business_id", biz.id)
+        .eq("appointment_date", date)
+        .neq("status", "cancelled")
+      setBookedAppointments((data ?? []) as BookedAppointment[])
+      setLoadingSlots(false)
+    }
+    fetchSlots()
   }, [business, selectedService, selectedDate, refreshSlotsKey])
 
-  useEffect(() => {
-    if (!business || !selectedDate) return
-    const selected = dateStringToLocalDate(selectedDate)
-    if (isSelectableBookingDate(business, selected)) return
-
-    setSelectedDate(findNextSelectableBookingDate(business))
-    setSelectedTime(null)
-    setSubmitError(null)
-  }, [business, selectedDate])
 
   async function handleBooking() {
     setSubmitError(null)
@@ -569,7 +579,7 @@ export default function BookingPage() {
       setSubmitError("יש להזין מספר טלפון.")
       return
     }
-    if (/[^\d\s\-]/.test(trimmedPhone)) {
+    if (/[^\d\s-]/.test(trimmedPhone)) {
       setSubmitError("מספר הטלפון יכול להכיל ספרות בלבד.")
       return
     }

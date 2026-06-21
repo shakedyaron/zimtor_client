@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowRight, Filter } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
@@ -120,9 +120,6 @@ export default function AppointmentHistoryPage() {
     useState<DateRangeFilter>("month")
   const [customStart, setCustomStart] = useState(formatLocalDate(new Date()))
   const [customEnd, setCustomEnd] = useState(formatLocalDate(new Date()))
-
-  const appointmentsRef = useRef<AppointmentWithService[]>([])
-  appointmentsRef.current = appointments
 
   async function runAutoComplete(apts: AppointmentWithService[]) {
     const now = Date.now()
@@ -307,19 +304,32 @@ export default function AppointmentHistoryPage() {
             </div>
 
             {dateRangeFilter === "custom" && (
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(event) => setCustomStart(event.target.value)}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-800 sm:text-sm"
-                />
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(event) => setCustomEnd(event.target.value)}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-800 sm:text-sm"
-                />
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-bold text-slate-400">מתאריך</p>
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(event) => setCustomStart(event.target.value)}
+                    className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-800 sm:text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-bold text-slate-400">עד תאריך</p>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(event) => setCustomEnd(event.target.value)}
+                    className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-800 sm:text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDateRangeFilter("month")}
+                  className="h-10 shrink-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                >
+                  נקה סינון
+                </button>
               </div>
             )}
           </div>

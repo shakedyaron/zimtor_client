@@ -114,8 +114,9 @@ export default function AppointmentManagePage() {
     )
   }, [appointment])
 
+  const [now] = useState(Date.now)
   const hasPassed = appointmentDateTime
-    ? appointmentDateTime.getTime() <= Date.now()
+    ? appointmentDateTime.getTime() <= now
     : false
   const isCancelled = appointment?.status === "cancelled"
   const canCancel = Boolean(appointment && !isCancelled && !hasPassed)
