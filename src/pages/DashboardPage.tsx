@@ -22,32 +22,23 @@ import {
   uploadBusinessCover,
   uploadBusinessLogo,
 } from "@/lib/storage"
+import {
+  buildWeeklyAvailabilityFromBusiness,
+  getLegacyAvailabilityFields,
+  slotOverlapsBreak,
+  validateWeeklyAvailability,
+  type WeeklyAvailability,
+} from "@/lib/availability"
 import type { Business, Service, Appointment } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import WeeklyAvailabilityEditor from "@/components/WeeklyAvailabilityEditor"
 
 const DEFAULT_OPENING_TIME = "09:00"
 const DEFAULT_CLOSING_TIME = "18:00"
-const DEFAULT_WORKING_DAYS = [0, 1, 2, 3, 4]
-const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
-  const totalMinutes = index * 15
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-})
 
 type AppointmentStatus = "future" | "completed" | "cancelled" | "no_show"
-
-const weekDays = [
-  { value: 0, label: "ראשון" },
-  { value: 1, label: "שני" },
-  { value: 2, label: "שלישי" },
-  { value: 3, label: "רביעי" },
-  { value: 4, label: "חמישי" },
-  { value: 5, label: "שישי" },
-  { value: 6, label: "שבת" },
-]
 
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
@@ -68,21 +59,6 @@ function normalizeAppointmentStatus(status?: string | null): AppointmentStatus {
     return status
   }
   return "future"
-}
-
-function getBusinessWorkingDays(business: Business | null) {
-  const workingDays = business?.working_days
-  if (Array.isArray(workingDays)) return workingDays
-  if (typeof workingDays === "string") {
-    try {
-      const parsed = JSON.parse(workingDays)
-      if (Array.isArray(parsed))
-        return parsed.filter((day) => typeof day === "number")
-    } catch {
-      return DEFAULT_WORKING_DAYS
-    }
-  }
-  return DEFAULT_WORKING_DAYS
 }
 
 function getAppointmentDateTime(appointment: Appointment) {
@@ -173,9 +149,10 @@ export default function DashboardPage() {
   const [newServicePrice, setNewServicePrice] = useState("")
   const [addingService, setAddingService] = useState(false)
   const [addServiceError, setAddServiceError] = useState<string | null>(null)
-  const [openingTime, setOpeningTime] = useState(DEFAULT_OPENING_TIME)
-  const [closingTime, setClosingTime] = useState(DEFAULT_CLOSING_TIME)
-  const [workingDays, setWorkingDays] = useState<number[]>(DEFAULT_WORKING_DAYS)
+  const [weeklyAvailability, setWeeklyAvailability] =
+    useState<WeeklyAvailability>(() =>
+      buildWeeklyAvailabilityFromBusiness(null)
+    )
   const [savingAvailability, setSavingAvailability] = useState(false)
   const [availabilityError, setAvailabilityError] = useState<string | null>(
     null
@@ -263,9 +240,7 @@ export default function DashboardPage() {
 
     setBusiness(biz)
     setBusinessTheme(biz.business_theme ?? "dark")
-    setOpeningTime(biz.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME)
-    setClosingTime(biz.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME)
-    setWorkingDays(getBusinessWorkingDays(biz))
+    setWeeklyAvailability(buildWeeklyAvailabilityFromBusiness(biz))
     setBusinessName(biz.name ?? "")
     setBusinessDescription(biz.description ?? "")
     setBusinessPhone(biz.phone ?? "")
@@ -354,46 +329,25 @@ export default function DashboardPage() {
     setServices((prev) => prev.filter((s) => s.id !== id))
   }
 
-  function toggleWorkingDay(day: number) {
-    setAvailabilityError(null)
-    setAvailabilitySuccess(null)
-    setWorkingDays((prev) =>
-      prev.includes(day)
-        ? prev.filter((currentDay) => currentDay !== day)
-        : [...prev, day].sort((a, b) => a - b)
-    )
-  }
-
   async function handleSaveAvailability(e: React.FormEvent) {
     e.preventDefault()
     if (!business) return
     setAvailabilityError(null)
     setAvailabilitySuccess(null)
 
-    if (!openingTime) {
-      setAvailabilityError("יש לבחור שעת פתיחה.")
-      return
-    }
-    if (!closingTime) {
-      setAvailabilityError("יש לבחור שעת סגירה.")
-      return
-    }
-    if (openingTime >= closingTime) {
-      setAvailabilityError("שעת הסגירה חייבת להיות אחרי שעת הפתיחה.")
-      return
-    }
-    if (workingDays.length === 0) {
-      setAvailabilityError("יש לבחור לפחות יום עבודה אחד.")
+    const validationError = validateWeeklyAvailability(weeklyAvailability)
+    if (validationError) {
+      setAvailabilityError(validationError)
       return
     }
 
+    const legacyFields = getLegacyAvailabilityFields(weeklyAvailability)
     setSavingAvailability(true)
     const { data, error } = await supabase
       .from("businesses")
       .update({
-        opening_time: openingTime,
-        closing_time: closingTime,
-        working_days: workingDays,
+        ...legacyFields,
+        weekly_availability: weeklyAvailability,
       })
       .eq("id", business.id)
       .select("*")
@@ -404,9 +358,7 @@ export default function DashboardPage() {
       setAvailabilityError("שגיאה בשמירת הגדרות הזמינות. נסה שוב.")
     } else {
       setBusiness(data)
-      setOpeningTime(data.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME)
-      setClosingTime(data.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME)
-      setWorkingDays(getBusinessWorkingDays(data))
+      setWeeklyAvailability(buildWeeklyAvailabilityFromBusiness(data))
       setAvailabilitySuccess("הגדרות הזמינות נשמרו.")
     }
     setSavingAvailability(false)
@@ -581,26 +533,31 @@ export default function DashboardPage() {
         appointment.appointment_date === todayStr &&
         normalizeAppointmentStatus(appointment.status) !== "cancelled"
     )
-    const completedRevenue = appointments.reduce((total, appointment) => {
-      if (normalizeAppointmentStatus(appointment.status) !== "completed") {
-        return total
-      }
-      return total + appointmentServicePrice(appointment)
-    }, 0)
+    const completedRevenue = todayActiveAppointments.reduce(
+      (total, appointment) => {
+        if (normalizeAppointmentStatus(appointment.status) !== "completed") {
+          return total
+        }
+        return total + appointmentServicePrice(appointment)
+      },
+      0
+    )
+    const todayAvailability = weeklyAvailability[String(todayDate.getDay())]
     const openingMinutes =
-      timeToMinutes(openingTime) ?? timeToMinutes(DEFAULT_OPENING_TIME)!
+      timeToMinutes(todayAvailability?.open) ??
+      timeToMinutes(DEFAULT_OPENING_TIME)!
     const closingMinutes =
-      timeToMinutes(closingTime) ?? timeToMinutes(DEFAULT_CLOSING_TIME)!
+      timeToMinutes(todayAvailability?.close) ??
+      timeToMinutes(DEFAULT_CLOSING_TIME)!
     const shortestServiceDuration =
       services
         .map((service) => service.duration_minutes)
         .filter((duration) => Number.isFinite(duration) && duration > 0)
         .sort((a, b) => a - b)[0] ?? 30
-    const isWorkingDay = workingDays.includes(todayDate.getDay())
 
     let availableSlots = 0
     if (
-      isWorkingDay &&
+      todayAvailability?.enabled &&
       openingMinutes < closingMinutes &&
       services.length > 0
     ) {
@@ -609,6 +566,15 @@ export default function DashboardPage() {
         slotStart + shortestServiceDuration <= closingMinutes;
         slotStart += shortestServiceDuration
       ) {
+        if (
+          slotOverlapsBreak(
+            slotStart,
+            shortestServiceDuration,
+            todayAvailability
+          )
+        ) {
+          continue
+        }
         const hasConflict = todayActiveAppointments.some((appointment) =>
           appointmentOverlaps(slotStart, shortestServiceDuration, appointment)
         )
@@ -621,7 +587,7 @@ export default function DashboardPage() {
       completedRevenue,
       availableSlots,
     }
-  }, [appointments, closingTime, openingTime, services, todayStr, workingDays])
+  }, [appointments, services, todayStr, weeklyAvailability])
 
   if (loading) {
     return (
@@ -1124,69 +1090,14 @@ export default function DashboardPage() {
               animate={{ height: "auto", opacity: 1 }}
               className="space-y-4 px-4 py-4 sm:px-5"
             >
-              <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">שעת פתיחה</Label>
-                  <select
-                    value={openingTime}
-                    onChange={(e) => {
-                      setOpeningTime(e.target.value)
-                      setAvailabilityError(null)
-                      setAvailabilitySuccess(null)
-                    }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm"
-                    dir="ltr"
-                  >
-                    {TIME_OPTIONS.map((time) => (
-                      <option key={time} value={time} className="bg-slate-950">
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">שעת סגירה</Label>
-                  <select
-                    value={closingTime}
-                    onChange={(e) => {
-                      setClosingTime(e.target.value)
-                      setAvailabilityError(null)
-                      setAvailabilitySuccess(null)
-                    }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm"
-                    dir="ltr"
-                  >
-                    {TIME_OPTIONS.map((time) => (
-                      <option key={time} value={time} className="bg-slate-950">
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-400">ימי עבודה</Label>
-                <div className="flex flex-wrap gap-2">
-                  {weekDays.map((day) => {
-                    const active = workingDays.includes(day.value)
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => toggleWorkingDay(day.value)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                          active
-                            ? "border-indigo-300/30 bg-indigo-500/12 text-indigo-200"
-                            : "border-white/8 bg-white/4 text-slate-400 hover:border-indigo-300/15 hover:text-slate-200"
-                        }`}
-                      >
-                        {day.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+              <WeeklyAvailabilityEditor
+                value={weeklyAvailability}
+                onChange={(value) => {
+                  setWeeklyAvailability(value)
+                  setAvailabilityError(null)
+                  setAvailabilitySuccess(null)
+                }}
+              />
 
               {availabilityError && (
                 <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">

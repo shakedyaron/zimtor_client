@@ -48,8 +48,8 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 
 const DATE_RANGE_FILTERS: { value: DateRangeFilter; label: string }[] = [
   { value: "today", label: "היום" },
-  { value: "week", label: "שבוע" },
-  { value: "month", label: "חודש" },
+  { value: "week", label: "השבוע" },
+  { value: "month", label: "החודש" },
   { value: "custom", label: "מותאם" },
 ]
 
@@ -76,8 +76,16 @@ function getTodayRange() {
 function getCurrentWeekRange() {
   const today = new Date()
   const dayOfWeek = today.getDay() // 0 = Sunday
-  const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - dayOfWeek)
-  const saturday = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 6)
+  const sunday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() - dayOfWeek
+  )
+  const saturday = new Date(
+    sunday.getFullYear(),
+    sunday.getMonth(),
+    sunday.getDate() + 6
+  )
   return { start: formatLocalDate(sunday), end: formatLocalDate(saturday) }
 }
 
@@ -248,7 +256,7 @@ export default function AppointmentHistoryPage() {
             </p>
           </div>
           <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 sm:flex">
-             הכנסה בפועל היום: ₪{completedRevenue}
+            הכנסה בפועל היום: ₪{completedRevenue}
           </div>
         </div>
       </header>

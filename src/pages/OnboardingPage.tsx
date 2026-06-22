@@ -19,21 +19,18 @@ import {
   uploadBusinessCover,
   uploadBusinessLogo,
 } from "@/lib/storage"
+import {
+  buildWeeklyAvailabilityFromBusiness,
+  getLegacyAvailabilityFields,
+  validateWeeklyAvailability,
+  type WeeklyAvailability,
+} from "@/lib/availability"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import WeeklyAvailabilityEditor from "@/components/WeeklyAvailabilityEditor"
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5
 type BusinessTheme = "dark" | "light"
-
-const DEFAULT_OPENING_TIME = "09:00"
-const DEFAULT_CLOSING_TIME = "18:00"
-const DEFAULT_WORKING_DAYS = [0, 1, 2, 3, 4]
-const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
-  const totalMinutes = index * 15
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-})
 
 const RESERVED_SLUGS = new Set([
   "auth",
@@ -52,16 +49,6 @@ const RESERVED_SLUGS = new Set([
   "signin",
   "sign-in",
 ])
-
-const weekDays = [
-  { value: 0, label: "ראשון" },
-  { value: 1, label: "שני" },
-  { value: 2, label: "שלישי" },
-  { value: 3, label: "רביעי" },
-  { value: 4, label: "חמישי" },
-  { value: 5, label: "שישי" },
-  { value: 6, label: "שבת" },
-]
 
 function toSlug(text: string) {
   return text
@@ -93,9 +80,10 @@ export default function OnboardingPage() {
   const [address, setAddress] = useState("")
   const [logoUrl, setLogoUrl] = useState("")
   const [coverUrl, setCoverUrl] = useState("")
-  const [openingTime, setOpeningTime] = useState(DEFAULT_OPENING_TIME)
-  const [closingTime, setClosingTime] = useState(DEFAULT_CLOSING_TIME)
-  const [workingDays, setWorkingDays] = useState<number[]>(DEFAULT_WORKING_DAYS)
+  const [weeklyAvailability, setWeeklyAvailability] =
+    useState<WeeklyAvailability>(() =>
+      buildWeeklyAvailabilityFromBusiness(null)
+    )
   const [serviceName, setServiceName] = useState("")
   const [serviceDuration, setServiceDuration] = useState("30")
   const [servicePrice, setServicePrice] = useState("")
@@ -144,15 +132,6 @@ export default function OnboardingPage() {
     setError(null)
   }
 
-  function toggleWorkingDay(day: number) {
-    setError(null)
-    setWorkingDays((prev) =>
-      prev.includes(day)
-        ? prev.filter((currentDay) => currentDay !== day)
-        : [...prev, day].sort((a, b) => a - b)
-    )
-  }
-
   async function validateBasicDetails() {
     const trimmedName = businessName.trim()
     const trimmedSlug = slug.trim()
@@ -181,13 +160,7 @@ export default function OnboardingPage() {
   }
 
   function validateAvailability() {
-    if (!openingTime) return "יש לבחור שעת פתיחה."
-    if (!closingTime) return "יש לבחור שעת סגירה."
-    if (openingTime >= closingTime) {
-      return "שעת הסגירה חייבת להיות אחרי שעת הפתיחה."
-    }
-    if (workingDays.length === 0) return "יש לבחור לפחות יום עבודה אחד."
-    return null
+    return validateWeeklyAvailability(weeklyAvailability)
   }
 
   function validateService(allowEmpty: boolean) {
@@ -310,6 +283,8 @@ export default function OnboardingPage() {
 
     setSubmitting(true)
 
+    const legacyAvailabilityFields =
+      getLegacyAvailabilityFields(weeklyAvailability)
     const businessPayload = {
       owner_id: user.id,
       name: businessName.trim(),
@@ -321,9 +296,8 @@ export default function OnboardingPage() {
       address: address.trim() || null,
       logo_url: logoUrl.trim() || null,
       cover_image_url: coverUrl.trim() || null,
-      opening_time: openingTime,
-      closing_time: closingTime,
-      working_days: workingDays,
+      ...legacyAvailabilityFields,
+      weekly_availability: weeklyAvailability,
       business_theme: businessTheme,
     }
 
@@ -653,36 +627,13 @@ export default function OnboardingPage() {
 
         {step === 3 && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
-              <Field label="שעת פתיחה">
-                <TimeSelect value={openingTime} onChange={setOpeningTime} />
-              </Field>
-              <Field label="שעת סגירה">
-                <TimeSelect value={closingTime} onChange={setClosingTime} />
-              </Field>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-slate-400">ימי עבודה</Label>
-              <div className="flex flex-wrap gap-2">
-                {weekDays.map((day) => {
-                  const active = workingDays.includes(day.value)
-                  return (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => toggleWorkingDay(day.value)}
-                      className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                        active
-                          ? "border-indigo-300/30 bg-indigo-500/12 text-indigo-200"
-                          : "border-white/8 bg-white/4 text-slate-400 hover:border-indigo-300/15 hover:text-slate-200"
-                      }`}
-                    >
-                      {day.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <WeeklyAvailabilityEditor
+              value={weeklyAvailability}
+              onChange={(value) => {
+                setWeeklyAvailability(value)
+                setError(null)
+              }}
+            />
           </div>
         )}
 
@@ -753,11 +704,12 @@ export default function OnboardingPage() {
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
               <p className="text-xs font-bold text-indigo-300">סיכום</p>
               <p className="mt-1 text-sm text-slate-300">
-                {businessName || "העסק שלך"} ייפתח עם שעות פעילות{" "}
-                <span dir="ltr">
-                  {openingTime}-{closingTime}
-                </span>
-                , {workingDays.length} ימי עבודה
+                {businessName || "העסק שלך"} ייפתח עם{" "}
+                {
+                  getLegacyAvailabilityFields(weeklyAvailability).working_days
+                    .length
+                }{" "}
+                ימי עבודה
                 {!skipFirstService && serviceName.trim()
                   ? ` ושירות ראשון: ${serviceName.trim()}`
                   : "."}
@@ -790,29 +742,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <Label className="text-xs font-medium text-slate-400">{label}</Label>
       {children}
     </div>
-  )
-}
-
-function TimeSelect({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-slate-100 shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-sm"
-      dir="ltr"
-    >
-      {TIME_OPTIONS.map((time) => (
-        <option key={time} value={time} className="bg-slate-950">
-          {time}
-        </option>
-      ))}
-    </select>
   )
 }
 

@@ -847,8 +847,11 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.42 }}
             className="flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <Link to={user ? "/dashboard" : "/auth"}>
-              <button className="w-11/12 rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto">
+            <Link
+              to={user ? "/dashboard" : "/auth"}
+              className="w-11/12 md:w-auto"
+            >
+              <button className="w-full rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 hover:shadow-indigo-500/35 sm:w-auto">
                 קבלו הדגמה
               </button>
             </Link>
@@ -1069,8 +1072,7 @@ export default function LandingPage() {
             מוכנים להתחיל?
           </h2>
           <p className="mb-8 text-slate-400">
-            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם, בלי כרטיס
-            אשראי.
+            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם !
           </p>
           <Link to={user ? "/dashboard" : "/auth"}>
             <button className="rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-10 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 hover:shadow-indigo-500/28">

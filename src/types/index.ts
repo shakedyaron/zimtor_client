@@ -7,6 +7,7 @@ export interface Business {
   opening_time?: string | null
   closing_time?: string | null
   working_days?: number[] | string | null
+  weekly_availability?: unknown
   logo_url?: string | null
   cover_image_url?: string | null
   description?: string | null

@@ -13,6 +13,13 @@ import {
   MapPin,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import {
+  DEFAULT_CLOSING_TIME,
+  DEFAULT_OPENING_TIME,
+  getAvailabilityForDate,
+  slotOverlapsBreak,
+  type WeekdayAvailability,
+} from "@/lib/availability"
 import type { Business, Service } from "@/types"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,10 +30,6 @@ type BookedAppointment = {
   appointment_time: string
   services?: BookedAppointmentService | BookedAppointmentService[] | null
 }
-
-const DEFAULT_OPENING_TIME = "09:00"
-const DEFAULT_CLOSING_TIME = "18:00"
-const DEFAULT_WORKING_DAYS = [0, 1, 2, 3, 4]
 
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
@@ -50,7 +53,8 @@ function isPastSlotForToday(
 function generateTimeSlots(
   durationMinutes: number,
   openingTime = DEFAULT_OPENING_TIME,
-  closingTime = DEFAULT_CLOSING_TIME
+  closingTime = DEFAULT_CLOSING_TIME,
+  dayAvailability?: WeekdayAvailability
 ): string[] {
   const slots: string[] = []
   const startMinutes =
@@ -60,6 +64,12 @@ function generateTimeSlots(
   if (durationMinutes <= 0 || startMinutes >= endMinutes) return slots
   const interval = durationMinutes
   for (let m = startMinutes; m + durationMinutes <= endMinutes; m += interval) {
+    if (
+      dayAvailability &&
+      slotOverlapsBreak(m, durationMinutes, dayAvailability)
+    ) {
+      continue
+    }
     const h = Math.floor(m / 60)
     const min = m % 60
     slots.push(
@@ -173,24 +183,9 @@ function createCalendarDataHref({
   return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`
 }
 
-function getBusinessWorkingDays(business: Business | null) {
-  const workingDays = business?.working_days
-  if (Array.isArray(workingDays)) return workingDays
-  if (typeof workingDays === "string") {
-    try {
-      const parsed = JSON.parse(workingDays)
-      if (Array.isArray(parsed))
-        return parsed.filter((day) => typeof day === "number")
-    } catch {
-      return DEFAULT_WORKING_DAYS
-    }
-  }
-  return DEFAULT_WORKING_DAYS
-}
-
 function isBusinessOpenOnDate(business: Business | null, dateStr: string) {
-  const day = dateStringToLocalDate(dateStr).getDay()
-  return getBusinessWorkingDays(business).includes(day)
+  return getAvailabilityForDate(business, dateStringToLocalDate(dateStr))
+    .enabled
 }
 
 function addDays(date: Date, days: number) {
@@ -207,7 +202,7 @@ function isSelectableBookingDate(business: Business | null, date: Date) {
   return (
     day.getTime() >= today.getTime() &&
     day.getTime() <= maxDate.getTime() &&
-    getBusinessWorkingDays(business).includes(day.getDay())
+    getAvailabilityForDate(business, day).enabled
   )
 }
 
@@ -431,6 +426,9 @@ export default function BookingPage() {
   const [bookedAppointments, setBookedAppointments] = useState<
     BookedAppointment[]
   >([])
+  const [blockedSlots, setBlockedSlots] = useState<
+    { key: string; slot: string }[]
+  >([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [refreshSlotsKey, setRefreshSlotsKey] = useState(0)
 
@@ -443,6 +441,7 @@ export default function BookingPage() {
 
   const [prevBizId, setPrevBizId] = useState(business?.id)
   const [prevDateForCheck, setPrevDateForCheck] = useState(selectedDate)
+  const availabilityKey = `${business?.id ?? "none"}:${selectedService?.id ?? "none"}:${selectedDate}`
   if (prevBizId !== business?.id || prevDateForCheck !== selectedDate) {
     setPrevBizId(business?.id)
     setPrevDateForCheck(selectedDate)
@@ -505,6 +504,16 @@ export default function BookingPage() {
     fetchSlots()
   }, [business, selectedService, selectedDate, refreshSlotsKey])
 
+  useEffect(() => {
+    function handleFocus() {
+      if (business && selectedService && selectedDate) {
+        setRefreshSlotsKey((prev) => prev + 1)
+      }
+    }
+
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
+  }, [business, selectedService, selectedDate])
 
   async function handleBooking() {
     setSubmitError(null)
@@ -554,17 +563,27 @@ export default function BookingPage() {
       }
     }
     {
-      const openT = business.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME
-      const closeT = business.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME
+      const dayAvailability = getAvailabilityForDate(
+        business,
+        dateStringToLocalDate(selectedDate)
+      )
+      const openT = dayAvailability.open
+      const closeT = dayAvailability.close
       const slotMins = timeToMinutes(selectedTime)
       const openMins = timeToMinutes(openT)
       const closeMins = timeToMinutes(closeT)
       if (
+        !dayAvailability.enabled ||
         slotMins === null ||
         openMins === null ||
         closeMins === null ||
         slotMins < openMins ||
-        slotMins + selectedService.duration_minutes > closeMins
+        slotMins + selectedService.duration_minutes > closeMins ||
+        slotOverlapsBreak(
+          slotMins,
+          selectedService.duration_minutes,
+          dayAvailability
+        )
       ) {
         setSubmitError("השעה שנבחרה אינה בשעות הפעילות של העסק.")
         setStep(2)
@@ -618,8 +637,17 @@ export default function BookingPage() {
         currentBookedAppointments
       )
     ) {
-      setSubmitError("השעה הזו כבר תפוסה. בחר שעה אחרת.")
+      const conflictedTime = selectedTime
+      setSubmitError("השעה שנבחרה נתפסה. עודכנו שעות פנויות.")
       setBookedAppointments(currentBookedAppointments)
+      setBlockedSlots((prev) =>
+        prev.some(
+          (blocked) =>
+            blocked.key === availabilityKey && blocked.slot === conflictedTime
+        )
+          ? prev
+          : [...prev, { key: availabilityKey, slot: conflictedTime }]
+      )
       setRefreshSlotsKey((prev) => prev + 1)
       setSelectedTime(null)
       setStep(2)
@@ -641,7 +669,17 @@ export default function BookingPage() {
 
     if (error) {
       if (error.code === "23505") {
-        setSubmitError("השעה הזו כבר נתפסה. בחר שעה אחרת.")
+        const conflictedTime = selectedTime
+        setSubmitError("השעה שנבחרה נתפסה. עודכנו שעות פנויות.")
+        setBlockedSlots((prev) =>
+          conflictedTime &&
+          !prev.some(
+            (blocked) =>
+              blocked.key === availabilityKey && blocked.slot === conflictedTime
+          )
+            ? [...prev, { key: availabilityKey, slot: conflictedTime }]
+            : prev
+        )
         setRefreshSlotsKey((prev) => prev + 1)
         setSelectedTime(null)
         setStep(2)
@@ -716,10 +754,11 @@ export default function BookingPage() {
     )
   }
 
-  const openingTime =
-    business?.opening_time?.slice(0, 5) ?? DEFAULT_OPENING_TIME
-  const closingTime =
-    business?.closing_time?.slice(0, 5) ?? DEFAULT_CLOSING_TIME
+  const selectedDayAvailability = selectedDate
+    ? getAvailabilityForDate(business, dateStringToLocalDate(selectedDate))
+    : null
+  const openingTime = selectedDayAvailability?.open ?? DEFAULT_OPENING_TIME
+  const closingTime = selectedDayAvailability?.close ?? DEFAULT_CLOSING_TIME
   const isClosedDay = selectedDate
     ? !isBusinessOpenOnDate(business, selectedDate)
     : false
@@ -731,7 +770,8 @@ export default function BookingPage() {
       ? generateTimeSlots(
           selectedService.duration_minutes,
           openingTime,
-          closingTime
+          closingTime,
+          selectedDayAvailability ?? undefined
         )
       : []
   const availableSlots = isClosedDay
@@ -739,6 +779,9 @@ export default function BookingPage() {
     : timeSlots.filter(
         (t) =>
           selectedService &&
+          !blockedSlots.some(
+            (blocked) => blocked.key === availabilityKey && blocked.slot === t
+          ) &&
           !hasOverlappingAppointment(
             t,
             selectedService.duration_minutes,
