@@ -29,6 +29,10 @@ import {
   validateWeeklyAvailability,
   type WeeklyAvailability,
 } from "@/lib/availability"
+import {
+  appointmentServiceDuration,
+  appointmentServicePrice,
+} from "@/lib/appointmentSnapshot"
 import type { Business, Service, Appointment } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -88,21 +92,6 @@ function isUpcomingAppointment(appointment: Appointment) {
     : false
 }
 
-function appointmentService(
-  appointment: Appointment
-): { duration_minutes?: number | null; price?: number | null } | null {
-  const service = appointment.services
-  if (Array.isArray(service)) return service[0] ?? null
-  return service ?? null
-}
-
-function appointmentServicePrice(appointment: Appointment) {
-  const price = appointmentService(appointment)?.price
-  if (price == null) return 0
-  const numericPrice = Number(price)
-  return Number.isFinite(numericPrice) ? numericPrice : 0
-}
-
 function appointmentOverlaps(
   newStartMinutes: number,
   newDurationMinutes: number,
@@ -111,8 +100,7 @@ function appointmentOverlaps(
   const existingStartMinutes = timeToMinutes(
     formatTime(appointment.appointment_time)
   )
-  const existingDurationMinutes =
-    appointmentService(appointment)?.duration_minutes ?? 30
+  const existingDurationMinutes = appointmentServiceDuration(appointment)
 
   if (
     existingStartMinutes === null ||
@@ -188,8 +176,7 @@ export default function DashboardPage() {
       if (normalizeAppointmentStatus(apt.status) !== "future") return false
       const start = getAppointmentDateTime(apt)
       if (!start) return false
-      const svc = appointmentService(apt)
-      return start.getTime() + (svc?.duration_minutes ?? 30) * 60_000 < now
+      return start.getTime() + appointmentServiceDuration(apt) * 60_000 < now
     })
     if (!toComplete.length) return
     const ids = toComplete.map((a) => a.id)

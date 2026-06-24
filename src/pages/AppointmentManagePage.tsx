@@ -43,6 +43,24 @@ function parseAppointmentDateTimeLocal(dateStr: string, timeStr: string) {
   return new Date(year, month - 1, day, hour, minute)
 }
 
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  return hours * 60 + minutes
+}
+
+function formatMinutes(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+}
+
+function formatTimeRange(time: string, durationMinutes: number | null) {
+  const startMinutes = timeToMinutes(time)
+  if (startMinutes === null || !durationMinutes || durationMinutes <= 0) {
+    return time.slice(0, 5)
+  }
+  return `${formatMinutes(startMinutes)}-${formatMinutes(startMinutes + durationMinutes)}`
+}
+
 function statusLabel(status: string) {
   if (status === "completed") return "בוצע"
   if (status === "cancelled") return "בוטל"
@@ -211,7 +229,10 @@ export default function AppointmentManagePage() {
                     <DetailRow
                       icon={<Clock className="h-4 w-4" />}
                       label="שעה"
-                      value={appointment.appointment_time.slice(0, 5)}
+                      value={formatTimeRange(
+                        appointment.appointment_time,
+                        appointment.service_duration_minutes
+                      )}
                     />
                     <DetailRow
                       icon={<Scissors className="h-4 w-4" />}

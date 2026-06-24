@@ -20,14 +20,17 @@ import {
   slotOverlapsBreak,
   type WeekdayAvailability,
 } from "@/lib/availability"
+import { appointmentServiceDuration } from "@/lib/appointmentSnapshot"
 import type { Business, Service } from "@/types"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 type Step = 1 | 2 | 3 | 4
-type BookedAppointmentService = { duration_minutes: number | null }
+type BookedAppointmentService = { duration_minutes: number | string | null }
 type BookedAppointment = {
   appointment_time: string
+  status?: string | null
+  service_duration_minutes?: number | string | null
   services?: BookedAppointmentService | BookedAppointmentService[] | null
 }
 
@@ -35,6 +38,14 @@ function timeToMinutes(time: string) {
   const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
   return hours * 60 + minutes
+}
+
+function normalizeDurationMinutes(
+  durationMinutes: number | string | null | undefined,
+  fallbackMinutes = 30
+) {
+  const duration = Number(durationMinutes ?? fallbackMinutes)
+  return Number.isFinite(duration) && duration > 0 ? duration : fallbackMinutes
 }
 
 // Returns true when a slot has already passed (or is within bufferMinutes) on today's date.
@@ -85,20 +96,18 @@ function appointmentOverlaps(
   bookedAppointment: BookedAppointment
 ) {
   const existingStartMinutes = timeToMinutes(bookedAppointment.appointment_time)
-  const bookedService = Array.isArray(bookedAppointment.services)
-    ? bookedAppointment.services[0]
-    : bookedAppointment.services
-  const existingDurationMinutes = bookedService?.duration_minutes ?? 30
+  const existingDurationMinutes = appointmentServiceDuration(bookedAppointment)
+  const newDuration = normalizeDurationMinutes(newDurationMinutes, 0)
 
   if (
     existingStartMinutes === null ||
-    newDurationMinutes <= 0 ||
+    newDuration <= 0 ||
     existingDurationMinutes <= 0
   ) {
     return false
   }
 
-  const newEndMinutes = newStartMinutes + newDurationMinutes
+  const newEndMinutes = newStartMinutes + newDuration
   const existingEndMinutes = existingStartMinutes + existingDurationMinutes
 
   return (
@@ -144,6 +153,16 @@ function formatCalendarDateTime(dateStr: string, timeStr: string) {
   const [year, month, day] = dateStr.split("-").map(Number)
   const [hours, minutes] = timeStr.slice(0, 5).split(":").map(Number)
   return `${year}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}T${String(hours).padStart(2, "0")}${String(minutes).padStart(2, "0")}00`
+}
+
+function formatMinutes(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+}
+
+function formatTimeRange(time: string, durationMinutes: number) {
+  const startMinutes = timeToMinutes(time)
+  if (startMinutes === null) return time
+  return `${formatMinutes(startMinutes)}-${formatMinutes(startMinutes + durationMinutes)}`
 }
 
 function createCalendarDataHref({
@@ -494,10 +513,12 @@ export default function BookingPage() {
       setLoadingSlots(true)
       const { data } = await supabase
         .from("appointments")
-        .select("appointment_time, services(duration_minutes)")
+        .select(
+          "appointment_time, status, service_duration_minutes, services(duration_minutes)"
+        )
         .eq("business_id", biz.id)
         .eq("appointment_date", date)
-        .neq("status", "cancelled")
+        .or("status.is.null,status.neq.cancelled")
       setBookedAppointments((data ?? []) as BookedAppointment[])
       setLoadingSlots(false)
     }
@@ -616,10 +637,12 @@ export default function BookingPage() {
     const { data: latestBookedAppointments, error: latestBookedError } =
       await supabase
         .from("appointments")
-        .select("appointment_time, services(duration_minutes)")
+        .select(
+          "appointment_time, status, service_duration_minutes, services(duration_minutes)"
+        )
         .eq("business_id", business.id)
         .eq("appointment_date", selectedDate)
-        .neq("status", "cancelled")
+        .or("status.is.null,status.neq.cancelled")
 
     if (latestBookedError) {
       setSubmitError("שגיאה בבדיקת זמינות השעה. נסה שוב.")
@@ -665,6 +688,9 @@ export default function BookingPage() {
       appointment_time: selectedTime + ":00",
       status: "upcoming",
       manage_token: appointmentManageToken,
+      service_name: selectedService.name,
+      service_price: selectedService.price,
+      service_duration_minutes: selectedService.duration_minutes,
     })
 
     if (error) {
@@ -919,11 +945,15 @@ export default function BookingPage() {
   const appointmentServiceName = selectedService?.name ?? ""
   const appointmentBusinessName = business?.name ?? ""
   const appointmentTime = selectedTime ?? ""
+  const appointmentTimeRange =
+    selectedService && appointmentTime
+      ? formatTimeRange(appointmentTime, selectedService.duration_minutes)
+      : appointmentTime
   const whatsappMessage = `היי, זה פרטי התור שלי:
 עסק: ${appointmentBusinessName}
 שירות: ${appointmentServiceName}
 תאריך: ${formatDateHebrew(selectedDate)}
-שעה: ${appointmentTime}
+שעה: ${appointmentTimeRange}
 לצפייה או ביטול התור: ${manageLink}`
   const calendarHref =
     manageLink && selectedService && appointmentTime
@@ -1369,7 +1399,7 @@ export default function BookingPage() {
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className={th.infoLbl}>שעה</span>
-                      <span className={th.infoVal}>{selectedTime}</span>
+                      <span className={th.infoVal}>{appointmentTimeRange}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className={th.infoLbl}>שם</span>

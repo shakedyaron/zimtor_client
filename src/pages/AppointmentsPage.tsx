@@ -13,6 +13,11 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
+import {
+  appointmentServiceDuration,
+  appointmentServiceName,
+  appointmentServicePrice,
+} from "@/lib/appointmentSnapshot"
 import type { Appointment } from "@/types"
 
 type AppointmentWithService = Appointment & {
@@ -254,7 +259,7 @@ function getServiceColor(name: string | undefined) {
 function getEventMetrics(apt: AppointmentWithService, openingMinutes: number) {
   const start =
     timeToMinutes(formatTime(apt.appointment_time)) ?? openingMinutes
-  const duration = Math.max(apt.services?.duration_minutes ?? 30, 15)
+  const duration = appointmentServiceDuration(apt)
   const top =
     ((start - openingMinutes) / POSITION_STEP_MINUTES) * QUARTER_HEIGHT
   const height = (duration / POSITION_STEP_MINUTES) * QUARTER_HEIGHT
@@ -414,14 +419,14 @@ function CalendarEvent({
   layout: CalendarEventLayout
   onSelect: (appointment: AppointmentWithService) => void
 }) {
-  const color = getServiceColor(apt.services?.name)
+  const serviceName = appointmentServiceName(apt)
+  const color = getServiceColor(serviceName)
   const { start, end, top } = getEventMetrics(apt, openingMinutes)
   const visualMinHeight =
     displayMode === "mobile"
       ? MOBILE_MIN_EVENT_HEIGHT
       : DESKTOP_MIN_EVENT_HEIGHT
   const timeRange = `${formatMinutes(start)}-${formatMinutes(end)}`
-  const serviceName = apt.services?.name ?? "שירות"
   const widthPercent = 100 / layout.columnCount
   const eventHeight =
     layout.visualHeight <= visualMinHeight
@@ -692,9 +697,9 @@ function AppointmentDetailsSheet({
   if (!appointment) return null
 
   const start = timeToMinutes(formatTime(appointment.appointment_time)) ?? 0
-  const duration = appointment.services?.duration_minutes ?? 30
+  const duration = appointmentServiceDuration(appointment)
   const end = start + duration
-  const price = appointment.services?.price
+  const price = appointmentServicePrice(appointment)
   const status = normalizeAppointmentStatus(appointment.status)
   const statusMeta = STATUS_META[status]
 
@@ -733,7 +738,7 @@ function AppointmentDetailsSheet({
 
           <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-sm">
             {[
-              { label: "שירות", value: appointment.services?.name ?? "שירות" },
+              { label: "שירות", value: appointmentServiceName(appointment) },
               {
                 label: "תאריך",
                 value: `${hebrewWeekday(appointment.appointment_date)}, ${hebrewShortDate(appointment.appointment_date)}`,
@@ -745,7 +750,7 @@ function AppointmentDetailsSheet({
               { label: "טלפון", value: appointment.customer_phone, dir: "ltr" },
               {
                 label: "מחיר",
-                value: price != null ? `₪${price}` : "לא הוגדר",
+                value: price > 0 ? `₪${price}` : "לא הוגדר",
               },
               { label: "סטטוס", value: statusMeta.label },
             ].map((item) => (
@@ -835,7 +840,7 @@ export default function AppointmentsPage() {
       if (normalizeAppointmentStatus(apt.status) !== "future") return false
       const start = timeToMinutes(formatTime(apt.appointment_time))
       if (start === null) return false
-      const duration = apt.services?.duration_minutes ?? 30
+      const duration = appointmentServiceDuration(apt)
       const [year, month, day] = apt.appointment_date.split("-").map(Number)
       const endDate = new Date(
         year,

@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { ArrowRight, Filter } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { supabase } from "@/lib/supabase"
+import {
+  appointmentServiceDuration,
+  appointmentServiceName,
+  appointmentServicePrice,
+} from "@/lib/appointmentSnapshot"
 import type { Appointment } from "@/types"
 
 type AppointmentStatus = "future" | "completed" | "cancelled" | "no_show"
@@ -101,6 +106,23 @@ function formatHistoryDate(dateStr: string) {
   return new Date(year, month - 1, day).toLocaleDateString("he-IL")
 }
 
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.slice(0, 5).split(":").map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  return hours * 60 + minutes
+}
+
+function formatMinutes(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+}
+
+function formatAppointmentTimeRange(appointment: AppointmentWithService) {
+  const startMinutes = timeToMinutes(appointment.appointment_time)
+  if (startMinutes === null) return appointment.appointment_time.slice(0, 5)
+  const duration = appointmentServiceDuration(appointment)
+  return `${formatMinutes(startMinutes)}-${formatMinutes(startMinutes + duration)}`
+}
+
 function resolveDateRange(
   filter: DateRangeFilter,
   customStart: string,
@@ -146,7 +168,7 @@ export default function AppointmentHistoryPage() {
         !Number.isFinite(minute)
       )
         return false
-      const duration = apt.services?.duration_minutes ?? 30
+      const duration = appointmentServiceDuration(apt)
       const endMinutes = hour * 60 + minute + duration
       const endDate = new Date(
         year,
@@ -233,7 +255,7 @@ export default function AppointmentHistoryPage() {
     if (normalizeAppointmentStatus(appointment.status) !== "completed") {
       return total
     }
-    return total + (appointment.services?.price ?? 0)
+    return total + appointmentServicePrice(appointment)
   }, 0)
 
   return (
@@ -372,16 +394,19 @@ export default function AppointmentHistoryPage() {
                   >
                     <div className="font-bold text-slate-800">
                       {formatHistoryDate(appointment.appointment_date)}
+                      <div className="text-xs font-semibold text-slate-400">
+                        {formatAppointmentTimeRange(appointment)}
+                      </div>
                     </div>
                     <div className="min-w-0 truncate font-semibold text-slate-700">
                       {appointment.customer_name}
                     </div>
                     <div className="min-w-0 truncate text-slate-500">
-                      {appointment.services?.name ?? "שירות"}
+                      {appointmentServiceName(appointment)}
                     </div>
                     <div className="font-bold text-slate-700">
-                      {appointment.services?.price != null
-                        ? `₪${appointment.services.price}`
+                      {appointmentServicePrice(appointment) > 0
+                        ? `₪${appointmentServicePrice(appointment)}`
                         : "-"}
                     </div>
                     <div>

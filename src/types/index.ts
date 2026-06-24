@@ -31,6 +31,9 @@ export interface Appointment {
   id: string
   business_id: string
   service_id: string | null
+  service_name?: string | null
+  service_price?: number | string | null
+  service_duration_minutes?: number | string | null
   customer_name: string
   customer_phone: string
   appointment_date: string

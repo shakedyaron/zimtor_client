@@ -1072,7 +1072,8 @@ export default function LandingPage() {
             מוכנים להתחיל?
           </h2>
           <p className="mb-8 text-slate-400">
-            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. בחינם !
+            הצטרפו לעסקים שכבר מנהלים את התורים שלהם עם zimtor. ללא עלות בתקופת
+            ההשקה !
           </p>
           <Link to={user ? "/dashboard" : "/auth"}>
             <button className="rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 px-10 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/15 transition hover:opacity-90 hover:shadow-indigo-500/28">
